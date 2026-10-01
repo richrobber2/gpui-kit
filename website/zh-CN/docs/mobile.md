@@ -19,6 +19,13 @@ GPUI Kit 目前使用 `gpui-pre-mobile`，这是在[兼容性 fork](https://gith
 
 在 iOS 与 Android 上，原生 UI 与 GPUI 都可以共处同一个界面。用户期望具有平台原生行为的部分，例如 NavigationBar 和底部输入框，由原生 UI 实现；GPUI 作为其中的一个 View 渲染在两者之间。双方各自负责自己的布局与输入，宿主像摆放其他原生 View 一样摆放 GPUI View。
 
+## Android 示例
+
+独立的 Android 计数器示例及其构建、安装命令见
+[examples/android-demo](https://github.com/richrobber2/gpui-kit/tree/main/examples/android-demo)。
+该示例使用 NativeActivity 和实验性的兼容平台，已在搭载 Android 14 的
+Moto G Play (2024) 上验证。文档中的构建环境是 Termux PRoot 内的 Debian ARM64。
+
 ## 运行 iOS 示例
 
 从兼容 fork 中的 [Swift 容器示例](https://github.com/longbridge/gpui-mobile/tree/0b882efdac7f524e0bb0b1d4c886b2aa752f9f20/example) 开始。它使用 `Message`、`Bubble`、`TextView`、`Input`、思考摘要和复制操作组成聊天界面。回复来自本地示例数据，没有接入 AI 服务。

@@ -19,6 +19,14 @@ The current integration is experimental. The Swift-hosted iOS example has been b
 
 Native UI and GPUI can share one screen on both iOS and Android. The native side keeps the parts users expect to behave like the platform, such as the navigation bar and the bottom input field, and GPUI renders as one view between them. Each side keeps its own layout and input; the host places the GPUI view like any other native view.
 
+## Android demo
+
+For a standalone Android counter demo with build and install commands, see
+[examples/android-demo](https://github.com/richrobber2/gpui-kit/tree/main/examples/android-demo).
+It uses NativeActivity and the experimental compatibility platform, and was
+verified on a Moto G Play (2024) running Android 14. Its documented build
+environment is Debian ARM64 in Termux PRoot.
+
 ## Run the iOS example
 
 Start with the compatibility fork’s [Swift container example](https://github.com/longbridge/gpui-mobile/tree/0b882efdac7f524e0bb0b1d4c886b2aa752f9f20/example). It includes a conversation UI with `Message`, `Bubble`, `TextView`, `Input`, thought summaries, and copy actions. Its responses are local sample data; it does not connect to an AI service.
