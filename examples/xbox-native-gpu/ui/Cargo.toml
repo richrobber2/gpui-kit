@@ -28,6 +28,6 @@ debug = 0
 
 [profile.release]
 panic = "unwind"
-codegen-units = 1
+codegen-units = 16
 
 [workspace]

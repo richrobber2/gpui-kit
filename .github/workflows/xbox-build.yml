@@ -27,9 +27,25 @@ jobs:
         run: |
           rustup toolchain install nightly-2026-09-30 --profile minimal --component rust-src
           if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain installation failed.' }
+      - uses: actions/cache/restore@v4
+        id: rust-cache
+        with:
+          path: |
+            ~/.cargo/registry
+            examples/xbox-native-gpu/ui/target
+          key: xbox-rust-nightly-2026-09-30-${{ hashFiles('examples/xbox-native-gpu/ui/Cargo.lock') }}-${{ github.sha }}
+          restore-keys: |
+            xbox-rust-nightly-2026-09-30-${{ hashFiles('examples/xbox-native-gpu/ui/Cargo.lock') }}-
       - name: Build and verify signed UWP package
         shell: pwsh
         run: ./examples/xbox-native-gpu/scripts/build.ps1
+      - uses: actions/cache/save@v4
+        if: always() && steps.rust-cache.outputs.cache-hit != 'true'
+        with:
+          path: |
+            ~/.cargo/registry
+            examples/xbox-native-gpu/ui/target
+          key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v4
         with:
           name: gpui-kit-xbox-x64

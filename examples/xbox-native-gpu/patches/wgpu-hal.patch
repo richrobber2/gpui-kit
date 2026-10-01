@@ -30,7 +30,7 @@
 +                // SAFETY: the caller supplies a live CoreWindow IUnknown; cloning AddRefs it.
 +                let core_window = unsafe { <windows::core::IUnknown as windows::core::Interface>::from_raw_borrowed(&raw) }
 +                    .ok_or_else(|| crate::InstanceError::new("null CoreWindow".into()))?
-+                    .to_owned();
++                    .clone();
 +                Ok(super::Surface {
 +                    factory: self.factory.clone(),
 +                    factory_media: self.factory_media.clone(),
