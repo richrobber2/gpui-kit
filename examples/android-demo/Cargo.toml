@@ -1,0 +1,31 @@
+[package]
+name = "gpui-kit-demo"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "gpui_kit_demo"
+crate-type = ["cdylib"]
+
+[dependencies]
+gpui-kit = { path = "../../crates/kit", default-features = false, features = ["component"] }
+gpui-mobile = { package = "gpui-pre-mobile", path = "../../../gpui-mobile", default-features = false }
+android-activity = { version = "0.6", features = ["native-activity"] }
+android_logger = "0.15"
+log = "0.4"
+
+[profile.dev]
+debug = 0
+
+# WGPU's default instance flags follow this crate's debug assertions. Android
+# drivers may advertise debug utilities without exporting their entry points.
+[profile.dev.package.wgpu-types]
+debug-assertions = false
+
+[profile.release]
+strip = true
+panic = "abort"
+
+# Keep Android profiles and lockfile independent of the desktop workspace.
+[workspace]

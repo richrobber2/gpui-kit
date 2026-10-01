@@ -35,12 +35,13 @@
 //! here: latency would drop from "up to one poll interval" to milliseconds; the
 //! cost would stop scaling with the file count, which matters for an
 //! application that vendors a large dependency tree; and it would see the
-//! changes a stamp cannot — a rename or an atomic replace that preserves both
-//! size and timestamp. An event-backed detector could replace this internal
+//! changes a stamp cannot — an atomic replace that preserves both size and
+//! timestamp. An event-backed detector could replace this internal
 //! polling mechanism without changing the public [`ShellRuntime::watch`]
 //! lifecycle.
 
 use std::{
+    collections::BTreeMap,
     path::{Path, PathBuf},
     rc::Rc,
     time::{Duration, Instant, SystemTime},
@@ -152,26 +153,20 @@ impl SourceWatcher {
     }
 }
 
-/// A cheap summary of a source tree, compared for equality to detect a change.
+/// Each source file's metadata, compared for equality to detect a change.
 ///
-/// It is three aggregates rather than a file list because a poll must not
-/// allocate proportionally to the tree on every tick, and because equality is
-/// the only question being asked. Each aggregate covers a case the others miss:
-/// `newest` catches an edit in place, `files` catches an add or a delete, and
-/// `bytes` catches an edit whose timestamp did not move — which happens on
-/// filesystems with coarse timestamps, and in tests that write twice quickly.
+/// Paths make additions, deletions and renames visible, and per-file timestamps
+/// keep a newer file from hiding edits to another. The map has at most
+/// `MAX_FILES` entries and compares independently of directory enumeration order.
 ///
-/// What it cannot see is a change that preserves all three, such as swapping
-/// two files' names. That is the honest cost of not using `notify`.
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+/// An edit preserving both size and timestamp still requires an event-backed
+/// watcher or reading file contents to detect.
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
 struct TreeStamp {
-    newest: Option<SystemTime>,
-    files: usize,
-    bytes: u64,
+    files: BTreeMap<PathBuf, (u64, Option<SystemTime>)>,
 }
 
-/// Every watched file's newest modification time, plus the counts that make the
-/// stamp sensitive to additions and edits.
+/// Every watched file's size and modification time, keyed by its path.
 ///
 /// A missing or unreadable directory is not an error: an application directory
 /// can vanish mid-edit (a checkout, a move), and the watcher's job is to keep
@@ -218,21 +213,16 @@ fn scan_with_limit(directory: &Path, max_files: usize) -> Result<TreeStamp> {
                 continue;
             };
 
-            if stamp.files >= max_files {
+            if stamp.files.len() >= max_files {
                 bail!(
                     "source watch for `{}` exceeds the {max_files}-file limit",
                     directory.display()
                 );
             }
 
-            stamp.files += 1;
-            stamp.bytes = stamp.bytes.saturating_add(metadata.len());
-            if let Ok(modified) = metadata.modified() {
-                stamp.newest = Some(match stamp.newest {
-                    Some(newest) => newest.max(modified),
-                    None => modified,
-                });
-            }
+            stamp
+                .files
+                .insert(entry.path(), (metadata.len(), metadata.modified().ok()));
         }
     }
 
@@ -640,6 +630,35 @@ mod tests {
     }
 
     #[test]
+    fn same_length_edit_is_detected_below_another_files_timestamp() {
+        let tree = TempTree::new("older-file-edit");
+        tree.write("main.js", "export const value = 1;\n");
+        tree.write("helper.js", "export const helper = 1;\n");
+
+        let modified = SystemTime::now();
+        let set_modified = |name: &str, modified| {
+            std::fs::File::options()
+                .write(true)
+                .open(tree.path().join(name))
+                .unwrap()
+                .set_times(std::fs::FileTimes::new().set_modified(modified))
+                .unwrap();
+        };
+        set_modified("main.js", modified);
+        set_modified("helper.js", modified + Duration::from_secs(60));
+
+        let mut watcher = SourceWatcher::new(tree.path().to_path_buf())
+            .unwrap()
+            .with_debounce(Duration::ZERO);
+
+        tree.write("main.js", "export const value = 2;\n");
+        set_modified("main.js", modified + Duration::from_secs(1));
+
+        assert!(watcher.poll().unwrap(), "each file's timestamp matters");
+        assert!(!watcher.poll().unwrap(), "report the edit only once");
+    }
+
+    #[test]
     fn debounce_window_suppresses_a_burst() {
         let tree = TempTree::new("burst");
         tree.write("main.js", "export default class {}\n");
@@ -738,7 +757,7 @@ mod tests {
 
         let stamp = scan_with_limit(tree.path(), 1)
             .expect("one source plus a README should fit a one-source limit");
-        assert_eq!(stamp.files, 1);
+        assert_eq!(stamp.files.len(), 1);
     }
 
     #[test]
@@ -748,6 +767,6 @@ mod tests {
 
         let stamp = scan_with_limit(tree.path(), 0)
             .expect("non-source files should not consume the source-file budget");
-        assert_eq!(stamp.files, 0);
+        assert_eq!(stamp.files.len(), 0);
     }
 }

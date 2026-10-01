@@ -1,0 +1,10 @@
+[build]
+jobs = 1
+
+[target.aarch64-linux-android]
+linker = "/data/data/com.termux/files/usr/bin/clang"
+
+[env]
+CC_aarch64_linux_android = "/data/data/com.termux/files/usr/bin/clang"
+CXX_aarch64_linux_android = "/data/data/com.termux/files/usr/bin/clang++"
+AR_aarch64_linux_android = "/data/data/com.termux/files/usr/bin/llvm-ar"

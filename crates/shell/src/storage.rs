@@ -438,7 +438,10 @@ fn temporary_path(path: &Path) -> PathBuf {
 
 #[cfg(unix)]
 fn sync_parent(path: &Path) -> Result<(), String> {
-    let parent = path.parent().unwrap_or_else(|| Path::new("."));
+    let parent = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+        .unwrap_or_else(|| Path::new("."));
     std::fs::File::open(parent)
         .and_then(|directory| directory.sync_all())
         .map_err(|error| format!("cannot sync `{}`: {error}", parent.display()))
@@ -562,6 +565,26 @@ mod tests {
             br#"{"revision":2}"#
         );
         let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn persist_accepts_a_bare_relative_filename() {
+        let path = PathBuf::from(format!(
+            "gpui-shell-relative-store-{}-{}.json",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let body = br#"{"revision":1}"#.to_vec();
+        let result = persist(&path, body.clone());
+        let persisted = std::fs::read(&path);
+        let _ = std::fs::remove_file(&path);
+
+        result.expect("persist with a bare relative filename");
+        assert_eq!(persisted.expect("persisted store"), body);
     }
 
     #[test]

@@ -1,0 +1,12 @@
+/target/
+/xtask/target/
+/dist/
+/android/android.jar
+/android/package/
+/android/debug.keystore
+/android/r8.jar
+/android/classes/
+/android/compiled/
+/android/src/dev/gpui/mobile/
+*.log
+*.keystore
