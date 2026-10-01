@@ -1,0 +1,9 @@
+/vendor/
+/ui/target/
+/build/
+/generated/
+/artifacts/
+/Assets/*.png
+*.pfx
+/generated-matrix-test.exe
+/*.obj

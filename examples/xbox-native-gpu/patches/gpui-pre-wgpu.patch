@@ -1,0 +1,22 @@
+--- a/src/wgpu_context.rs
++++ b/src/wgpu_context.rs
+@@ -324,7 +324,7 @@
+         };
+         let descriptor = wgpu::InstanceDescriptor {
+             backends,
+-            flags: wgpu::InstanceFlags::default(),
++            flags: if cfg!(target_vendor = "uwp") { wgpu::InstanceFlags::empty() } else { wgpu::InstanceFlags::default() },
+             backend_options: wgpu::BackendOptions::default(),
+             memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
+             display: Some(Box::new(WebDisplaySource)),
+@@ -442,8 +442,8 @@
+     #[cfg(not(target_family = "wasm"))]
+     pub fn instance(display: Option<Box<dyn wgpu::wgt::WgpuHasDisplayHandle>>) -> wgpu::Instance {
+         wgpu::Instance::new(wgpu::InstanceDescriptor {
+-            backends: wgpu::Backends::VULKAN | wgpu::Backends::GL,
+-            flags: wgpu::InstanceFlags::default(),
++            backends: if cfg!(target_vendor = "uwp") { wgpu::Backends::DX12 } else { wgpu::Backends::VULKAN | wgpu::Backends::GL },
++            flags: if cfg!(target_vendor = "uwp") { wgpu::InstanceFlags::empty() } else { wgpu::InstanceFlags::default() },
+             backend_options: wgpu::BackendOptions::default(),
+             memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
+             display,

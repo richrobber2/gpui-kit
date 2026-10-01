@@ -106,7 +106,7 @@ pub use crate as gpui;
 pub mod test;
 
 pub use ::gpui_base as base;
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(not(any(target_os = "ios", target_os = "android", target_vendor = "uwp")))]
 pub use ::gpui_platform as platform;
 #[cfg(target_family = "wasm")]
 pub use ::gpui_web as web;
@@ -164,7 +164,7 @@ pub fn open_window<V: Render>(
 }
 
 // Mobile applications provide their platform with `Application::with_platform`.
-#[cfg(not(any(target_os = "ios", target_os = "android")))]
+#[cfg(not(any(target_os = "ios", target_os = "android", target_vendor = "uwp")))]
 pub use ::gpui_platform::application;
 
 /// Initializes every enabled layer. Call it once, before using anything else.

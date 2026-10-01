@@ -1,0 +1,33 @@
+[package]
+name = "gpui-kit-xbox"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+gpui-kit = { path = "../../../crates/kit", default-features = false, features = ["component"] }
+gpui-wgpu = { package = "gpui-pre-wgpu", version = "=0.3.7" }
+anyhow = "1"
+futures = "0.3"
+parking_lot = "0.12"
+raw-window-handle = "0.6"
+uuid = "1"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62", features = ["Win32_Foundation"] }
+
+[patch.crates-io]
+gpui-pre-wgpu = { path = "../vendor/gpui-pre-wgpu" }
+wgpu-hal = { path = "../vendor/wgpu-hal" }
+
+[profile.dev]
+debug = 0
+
+[profile.release]
+panic = "unwind"
+codegen-units = 1
+
+[workspace]

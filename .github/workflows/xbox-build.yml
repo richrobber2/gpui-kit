@@ -1,0 +1,37 @@
+name: Build GPUI Kit Xbox prototype
+on:
+  workflow_dispatch:
+  push:
+    branches: [xbox-prototype]
+    paths:
+      - examples/xbox-native-gpu/**
+      - crates/kit/**
+      - .github/workflows/xbox-build.yml
+  pull_request:
+    paths:
+      - examples/xbox-native-gpu/**
+      - .github/workflows/xbox-build.yml
+permissions:
+  contents: read
+concurrency:
+  group: xbox-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  package:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust nightly with standard-library sources
+        shell: pwsh
+        run: |
+          rustup toolchain install nightly-2026-09-30 --profile minimal --component rust-src
+          if ($LASTEXITCODE -ne 0) { throw 'Rust toolchain installation failed.' }
+      - name: Build and verify signed UWP package
+        shell: pwsh
+        run: ./examples/xbox-native-gpu/scripts/build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpui-kit-xbox-x64
+          path: examples/xbox-native-gpu/artifacts/
+          if-no-files-found: error

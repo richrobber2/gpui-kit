@@ -1,0 +1,88 @@
+--- a/src/dx12/mod.rs
++++ b/src/dx12/mod.rs
+@@ -615,6 +615,8 @@
+     /// Borrowed, lifetime externally managed
+     SurfaceHandle(Foundation::HANDLE),
+     SwapChainPanel(types::ISwapChainPanelNative),
++    /// Owned COM reference; the host retains the CoreWindow on its UI thread.
++    CoreWindow(windows::core::IUnknown),
+ }
+ 
+ pub struct Surface {
+@@ -1382,6 +1384,11 @@
+                     Flags: flags.0 as u32,
+                 };
+                 let swap_chain1 = match self.target {
++                    SurfaceTarget::CoreWindow(ref core_window) => unsafe {
++                        self.factory.CreateSwapChainForCoreWindow(
++                            &device.present_queue, core_window, &desc, None,
++                        )
++                    },
+                     SurfaceTarget::Visual(_)
+                     | SurfaceTarget::VisualFromWndHandle { .. }
+                     | SurfaceTarget::SwapChainPanel(_) => {
+@@ -1430,7 +1437,7 @@
+                 })?;
+ 
+                 match &self.target {
+-                    SurfaceTarget::WndHandle(_) | SurfaceTarget::SurfaceHandle(_) => {}
++                    SurfaceTarget::WndHandle(_) | SurfaceTarget::SurfaceHandle(_) | SurfaceTarget::CoreWindow(_) => {}
+                     SurfaceTarget::VisualFromWndHandle {
+                         handle,
+                         dcomp_state,
+@@ -1498,7 +1505,8 @@
+             SurfaceTarget::Visual(_)
+             | SurfaceTarget::VisualFromWndHandle { .. }
+             | SurfaceTarget::SurfaceHandle(_)
+-            | SurfaceTarget::SwapChainPanel(_) => {}
++            | SurfaceTarget::SwapChainPanel(_)
++            | SurfaceTarget::CoreWindow(_) => {}
+         }
+ 
+         unsafe { swap_chain.SetMaximumFrameLatency(config.maximum_frame_latency) }
+--- a/src/dx12/instance.rs
++++ b/src/dx12/instance.rs
+@@ -136,6 +136,22 @@
+             raw_window_handle::RawDisplayHandle::Windows(_)
+         ));
+         match window_handle {
++            raw_window_handle::RawWindowHandle::WinRt(handle) => {
++                let raw = handle.core_window.as_ptr();
++                // SAFETY: the caller supplies a live CoreWindow IUnknown; cloning AddRefs it.
++                let core_window = unsafe { <windows::core::IUnknown as windows::core::Interface>::from_raw_borrowed(&raw) }
++                    .ok_or_else(|| crate::InstanceError::new("null CoreWindow".into()))?
++                    .to_owned();
++                Ok(super::Surface {
++                    factory: self.factory.clone(),
++                    factory_media: self.factory_media.clone(),
++                    target: SurfaceTarget::CoreWindow(core_window),
++                    // CoreWindow presentation uses vsync, never tearing.
++                    supports_allow_tearing: false,
++                    swap_chain: RwLock::new(None),
++                    options: self.options.clone(),
++                })
++            }
+             raw_window_handle::RawWindowHandle::Win32(handle) => {
+                 // https://github.com/rust-windowing/raw-window-handle/issues/171
+                 let handle = Foundation::HWND(handle.hwnd.get() as *mut _);
+--- a/src/dx12/adapter.rs
++++ b/src/dx12/adapter.rs
+@@ -1269,7 +1269,8 @@
+                 }
+                 SurfaceTarget::Visual(_)
+                 | SurfaceTarget::SurfaceHandle(_)
+-                | SurfaceTarget::SwapChainPanel(_) => None,
++                | SurfaceTarget::SwapChainPanel(_)
++                | SurfaceTarget::CoreWindow(_) => None,
+             }
+         };
+ 
+@@ -1295,7 +1296,7 @@
+                 | wgt::TextureUses::COPY_DST,
+             present_modes,
+             composite_alpha_modes: match surface.target {
+-                SurfaceTarget::WndHandle(_) => vec![wgt::CompositeAlphaMode::Opaque],
++                SurfaceTarget::WndHandle(_) | SurfaceTarget::CoreWindow(_) => vec![wgt::CompositeAlphaMode::Opaque],
+                 SurfaceTarget::Visual(_)
+                 | SurfaceTarget::VisualFromWndHandle { .. }
+                 | SurfaceTarget::SurfaceHandle(_)

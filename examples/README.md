@@ -20,6 +20,10 @@ not enable the gallery's test-support development dependency.
 
 Shared sample documents live in `fixtures/`.
 
+The experimental [Xbox GPU lab](xbox-native-gpu/README.md) embeds GPUI Kit in a
+UWP CoreWindow with a DirectX 12 interface and native Direct3D 11 compute.
+It uses its own Rust workspace and Windows packaging workflow.
+
 ## Opening windows
 
 Examples use `gpui_kit::open_window(options, cx, build)` after
