@@ -92,7 +92,7 @@ public:
                     auto pressed=static_cast<unsigned long long>(buttons)&~previous_;
                     previous_=static_cast<unsigned long long>(buttons);
                     const GamepadButtons masks[]={GamepadButtons::A,GamepadButtons::DPadLeft,GamepadButtons::DPadRight,GamepadButtons::DPadUp,GamepadButtons::DPadDown,GamepadButtons::X,GamepadButtons::Y};
-                    const GpuiKey codes[]={Run,Left,Right,Up,Down,Medium,Small};
+                    const GpuiKey codes[]={GpuiKey::Run,GpuiKey::Left,GpuiKey::Right,GpuiKey::Up,GpuiKey::Down,GpuiKey::Medium,GpuiKey::Small};
                     for(unsigned i=0;i<7;++i) if(pressed&static_cast<unsigned long long>(masks[i])) gpuiCheck(gpui_xbox_key(codes[i]));
                 } else previous_=0;
                 // Present the busy state before the synchronous native workload.
