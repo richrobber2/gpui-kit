@@ -11,7 +11,7 @@ foreach ($crate in $crates) {
     $destination = Join-Path "$root\vendor" $crate.Name
     if (Test-Path $destination) {
         # An existing tree must already contain exactly our patch.
-        & git -C $destination apply --reverse --check "$root\patches\$($crate.Name).patch"
+        & git -c core.autocrlf=false -C $destination apply --reverse --check "$root\patches\$($crate.Name).patch"
         if ($LASTEXITCODE -ne 0) { throw "Existing vendor tree is not patched: $destination" }
         continue
     }
@@ -20,9 +20,9 @@ foreach ($crate in $crates) {
     & tar -xf $archive -C "$root\vendor"
     if ($LASTEXITCODE -ne 0) { throw 'Could not extract dependency.' }
     Move-Item "$root\vendor\$($crate.Name)-$($crate.Version)" $destination
-    & git -C $destination apply --check "$root\patches\$($crate.Name).patch"
+    & git -c core.autocrlf=false -C $destination apply --check "$root\patches\$($crate.Name).patch"
     if ($LASTEXITCODE -ne 0) { throw 'Dependency patch does not match the pinned source.' }
-    & git -C $destination apply "$root\patches\$($crate.Name).patch"
+    & git -c core.autocrlf=false -C $destination apply "$root\patches\$($crate.Name).patch"
     if ($LASTEXITCODE -ne 0) { throw 'Dependency patch failed.' }
 }
 foreach ($source in Get-ChildItem "$root\Assets\*.png.base64") {

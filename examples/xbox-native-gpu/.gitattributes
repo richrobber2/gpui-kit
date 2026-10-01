@@ -1,0 +1,2 @@
+*.patch text eol=lf whitespace=-blank-at-eol
+*.base64 text eol=lf
