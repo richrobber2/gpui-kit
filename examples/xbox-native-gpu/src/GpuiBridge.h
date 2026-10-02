@@ -7,6 +7,7 @@ int gpui_xbox_start(void* coreWindow, float width, float height,
                     const unsigned char* font, std::size_t length,
                     void (*requestJob)(std::uint32_t));
 int gpui_xbox_frame();
+int gpui_xbox_mono_font(const unsigned char* font, std::size_t length);
 int gpui_xbox_storage(const std::uint16_t* path, std::size_t length);
 int gpui_xbox_character(std::uint32_t code);
 int gpui_xbox_key(std::uint32_t code);

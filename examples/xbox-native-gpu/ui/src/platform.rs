@@ -292,6 +292,9 @@ impl XboxPlatform {
             clipboard: RefCell::new(None),
         }))
     }
+    pub fn add_font(&self, font: Vec<u8>) -> Result<()> {
+        self.text.add_fonts(vec![Cow::Owned(font)])
+    }
     pub fn tick(&self) -> Result<()> {
         self.dispatcher.tick();
         if self.quit.get() {

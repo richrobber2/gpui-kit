@@ -31,12 +31,12 @@ static void gpuiCheck(int result) {
     if(result != 0) throw std::runtime_error(std::string("GPUI: ")+gpui_xbox_last_error());
 }
 // Read the OS font through DirectWrite, avoiding unrestricted file access in UWP.
-static std::vector<unsigned char> systemFont() {
+static std::vector<unsigned char> systemFont(const wchar_t* familyName=L"Segoe UI") {
     ComPtr<IDWriteFactory> factory;
     check(DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(factory.GetAddressOf())));
     ComPtr<IDWriteFontCollection> collection;check(factory->GetSystemFontCollection(&collection));
-    UINT32 index=0;BOOL exists=FALSE;check(collection->FindFamilyName(L"Segoe UI", &index, &exists));
-    if(!exists) throw std::runtime_error("Segoe UI is unavailable");
+    UINT32 index=0;BOOL exists=FALSE;check(collection->FindFamilyName(familyName, &index, &exists));
+    if(!exists) throw std::runtime_error("Requested system font is unavailable");
     ComPtr<IDWriteFontFamily> family;check(collection->GetFontFamily(index, &family));
     ComPtr<IDWriteFont> font;check(family->GetFirstMatchingFont(DWRITE_FONT_WEIGHT_NORMAL,DWRITE_FONT_STRETCH_NORMAL,DWRITE_FONT_STYLE_NORMAL,&font));
     ComPtr<IDWriteFontFace> face;check(font->CreateFontFace(&face));
@@ -78,6 +78,10 @@ public:
             auto font=systemFont();auto bounds=window_->Bounds;
             gpuiCheck(gpui_xbox_start(reinterpret_cast<IUnknown*>(window_),bounds.Width,bounds.Height,font.data(),font.size(),&requestJob));
             uiReady_=true;
+            // Optional code font: retain the UI-font fallback if Xbox omits it.
+            try { auto mono=systemFont(L"Consolas");gpuiCheck(gpui_xbox_mono_font(mono.data(),mono.size())); }
+            catch(const std::exception&) {}
+
             gpuiCheck(gpui_xbox_visibility(visible_));
             auto root = Windows::Storage::ApplicationData::Current->LocalFolder->Path;
             gpuiCheck(gpui_xbox_storage(reinterpret_cast<const std::uint16_t*>(root->Data()), root->Length()));

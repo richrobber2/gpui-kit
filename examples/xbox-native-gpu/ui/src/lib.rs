@@ -94,38 +94,41 @@ pub unsafe extern "C" fn gpui_xbox_start(
         )?;
         let launched = Rc::new(RefCell::new(None));
         let launch_result = launched.clone();
-        let app = Application::with_platform(platform.clone()).run_embedded(move |cx| {
-            gpui_kit::init(cx);
-            Theme::change(ThemeMode::Dark, None, cx);
-            // Scale the whole component system together for television viewing.
-            Theme::global_mut(cx).font_size = px(24.0);
-            Theme::sync_base(cx);
-            let mut lab = None;
-            let mut studio = None;
-            let mut tool_entity = None;
-            let startup = cx
-                .open_window(WindowOptions::default(), |window, cx| {
-                    let content = cx.new(|cx| Lab::new(request, cx));
-                    let images = cx.new(|cx| model_studio::Studio::new(window, cx));
-                    let focus = images.read(cx).focus.clone();
-                    focus.focus(window, cx);
-                    lab = Some(content.clone());
-                    studio = Some(images.clone());
-                    let editor = cx.new(|cx| ide::Ide::new(window, cx));
-                    let controls = cx.new(controls::Controls::new);
-                    let tools =
-                        cx.new(|cx| tools::Tools::new(content, images, editor, controls, cx));
-                    tool_entity = Some(tools.clone());
-                    cx.new(|cx| Root::new(tools, window, cx))
-                })
-                .and_then(|window| {
-                    let (lab, studio) = lab
-                        .zip(studio)
-                        .ok_or_else(|| anyhow!("GPUI window failed to initialize"))?;
-                    Ok((lab, studio, tool_entity.unwrap(), window))
-                });
-            *launch_result.borrow_mut() = Some(startup);
-        });
+        let app = Application::with_platform(platform.clone())
+            .with_assets(gpui_kit::assets::Assets)
+            .run_embedded(move |cx| {
+                gpui_kit::init(cx);
+                Theme::change(ThemeMode::Dark, None, cx);
+                // Scale the whole component system together for television viewing.
+                Theme::global_mut(cx).font_size = px(24.0);
+                Theme::global_mut(cx).mono_font_size = px(22.0);
+                Theme::sync_base(cx);
+                let mut lab = None;
+                let mut studio = None;
+                let mut tool_entity = None;
+                let startup = cx
+                    .open_window(WindowOptions::default(), |window, cx| {
+                        let content = cx.new(|cx| Lab::new(request, cx));
+                        let images = cx.new(|cx| model_studio::Studio::new(window, cx));
+                        let focus = images.read(cx).focus.clone();
+                        focus.focus(window, cx);
+                        lab = Some(content.clone());
+                        studio = Some(images.clone());
+                        let editor = cx.new(|cx| ide::Ide::new(window, cx));
+                        let controls = cx.new(controls::Controls::new);
+                        let tools =
+                            cx.new(|cx| tools::Tools::new(content, images, editor, controls, cx));
+                        tool_entity = Some(tools.clone());
+                        cx.new(|cx| Root::new(tools, window, cx))
+                    })
+                    .and_then(|window| {
+                        let (lab, studio) = lab
+                            .zip(studio)
+                            .ok_or_else(|| anyhow!("GPUI window failed to initialize"))?;
+                        Ok((lab, studio, tool_entity.unwrap(), window))
+                    });
+                *launch_result.borrow_mut() = Some(startup);
+            });
         let (lab, studio, tools, window) = launched
             .borrow_mut()
             .take()
@@ -453,4 +456,24 @@ fn ui_probe(host: &Host) -> Result<()> {
         serde_json::to_vec(&status)?,
     );
     Ok(())
+}
+
+/// Optional DirectWrite monospace font, copied before returning to the host.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn gpui_xbox_mono_font(font: *const u8, length: usize) -> i32 {
+    boundary(|| {
+        if font.is_null() || length == 0 || length > 32 * 1024 * 1024 {
+            bail!("Invalid monospace font buffer");
+        }
+        let bytes = unsafe { std::slice::from_raw_parts(font, length) }.to_vec();
+        with_host(|host| {
+            host.platform.add_font(bytes)?;
+            host.app.update(|cx| {
+                Theme::global_mut(cx).mono_font_family = "Consolas".into();
+                Theme::sync_base(cx);
+                cx.refresh_windows();
+            });
+            Ok(())
+        })
+    })
 }

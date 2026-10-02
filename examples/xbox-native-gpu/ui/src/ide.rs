@@ -155,6 +155,11 @@ impl Ide {
                     dirty: false,
                 });
             }
+            self.selected = self
+                .buffers
+                .iter()
+                .position(|b| b.name == "main.rs")
+                .unwrap_or(0);
             Ok(())
         })();
         if let Err(error) = result {

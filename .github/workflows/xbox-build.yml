@@ -38,6 +38,7 @@ jobs:
           key: xbox-rust-nightly-2026-09-30-${{ hashFiles('examples/xbox-native-gpu/ui/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
             xbox-rust-nightly-2026-09-30-${{ hashFiles('examples/xbox-native-gpu/ui/Cargo.lock') }}-
+            xbox-rust-nightly-2026-09-30-
       - name: Build and verify signed UWP package
         shell: pwsh
         run: ./examples/xbox-native-gpu/scripts/build.ps1

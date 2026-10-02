@@ -8,7 +8,7 @@ publish = false
 crate-type = ["staticlib"]
 
 [dependencies]
-gpui-kit = { path = "../../../crates/kit", default-features = false, features = ["component"] }
+gpui-kit = { path = "../../../crates/kit", default-features = false, features = ["component", "assets"] }
 gpui-wgpu = { package = "gpui-pre-wgpu", version = "=0.3.7" }
 anyhow = "1"
 futures = "0.3"
