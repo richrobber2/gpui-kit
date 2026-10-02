@@ -109,3 +109,9 @@ Rust 使用 `x86_64-uwp-windows-msvc` target，以 nightly `build-std` 构建标
 ## 验证
 
 本地 Android target 的 Rust check 验证 platform trait 和应用代码，不执行 CoreWindow/DirectX 12 路径。Windows workflow 构建真正的 UWP target、运行独立矩阵参考测试并验证安装包签名。设备报告见 [validation/xbox-series-x-2026-10-02.json](validation/xbox-series-x-2026-10-02.json)，已验证的 loose-folder 部署命令见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。Xbox 还在本机编译并运行了独立的 Rust 手柄选择 smoke check，并编译了本示例的实际 HLSL shader。这些检查不代表已在主机上完成完整 GPUI Cargo/UWP 安装包构建。
+
+Models/IDE/Controls 部署和原生运行验证见
+[validation/xbox-tools-2026-10-02.json](validation/xbox-tools-2026-10-02.json)。
+三个现有 checkpoint 均完成了 256×256、两步 GPU 生成；通过本应用输入 bridge
+验证了中间预览、取消、编辑器保存/undo/剪贴板和本机 Rust 诊断。实体手柄与
+键盘交互仍需单独验证。

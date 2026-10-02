@@ -164,3 +164,10 @@ See [INSTALL.md](INSTALL.md) for the verified loose-folder deployment command.
 The Xbox also compiled and ran a standalone Rust controller-selection smoke
 check, and compiled this example’s actual HLSL shader locally. These checks do
 not establish a full GPUI Cargo/UWP package build on the console.
+
+The Models/IDE/Controls deployment and native runtime checks are recorded in
+[validation/xbox-tools-2026-10-02.json](validation/xbox-tools-2026-10-02.json).
+All three existing checkpoints completed 256×256, two-step GPU generation;
+intermediate preview, cancellation, editor save/undo/clipboard and native Rust
+diagnostics were checked through this app’s input bridge. Physical controller
+and keyboard interaction still need separate verification.

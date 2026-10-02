@@ -1,0 +1,110 @@
+{
+  "date_utc": "2026-10-02",
+  "device": "Xbox Series X",
+  "build_source_commit": "d36c966cd72b322d42b24fc933d63becc7ca7114",
+  "branch": "xbox-prototype",
+  "workflow_run": 36958401128,
+  "artifact_id": 11206494379,
+  "artifact_sha256": "d10403ef92ed4d8077ca5545d93a04857ba20a386984d55efde338f69a23be16",
+  "appx_sha256": "f74906fc671c0321e56f84c65d8a4fcae54f5371376f2287145de8392437d3f5",
+  "deployment": "loose-folder registration",
+  "development_folder": "GpuiKitXbox-f74906fc671c",
+  "render_backend": "GPUI WGPU DirectX 12 CoreWindow",
+  "checks": {
+    "windows_uwp_build": "passed",
+    "signature": "passed",
+    "preview_wire_format_tests": 3,
+    "independent_matrix_reference_tests": "passed",
+    "local_android_target_cargo_check": "passed",
+    "controller_art_transparency": "confirmed PNG RGBA with transparent pixels",
+    "controls_page": "rendered 1920x1080",
+    "ide_native_check_valid_source": "passed",
+    "ide_native_check_type_error": "E0308 displayed",
+    "ide_copy_paste_round_trip": "passed; resulting source rechecked on Xbox",
+    "ide_undo": "restored saved valid source; native check passed",
+    "ide_save": "saved source matches editor; prior version kept as hidden backup",
+    "ide_tool_switch_retains_dirty_buffer": "passed",
+    "ide_restart_retains_saved_file": "passed",
+    "ide_hidden_backup_excluded": "passed; four source files after restart",
+    "controller_focus_then_activate": "activated actual GPUI button via app navigation input bridge",
+    "model_cancel": "owned native child terminated; UI returned idle",
+    "model_live_preview": "captured intermediate step before final VAE image"
+  },
+  "model_generation_test_source_commit": "742cc419f9fcca2cda2457917938b18006cc01eb",
+  "ide_editing_test_source_commit": "b2c90b994419355bf565555dc3e4ab47061271fc",
+  "models": [
+    {
+      "compute_backend": "D3D11 hardware",
+      "gpu_linear": true,
+      "gpu_operation_counts": [
+        1422,
+        193,
+        170,
+        168,
+        37,
+        568,
+        272,
+        213,
+        410,
+        3
+      ],
+      "width": 256,
+      "height": 256,
+      "steps": 2,
+      "elapsed_ms": 41951,
+      "pipeline": "MiaoMiao Harem Anima 1.6: Qwen + adapter + 28-block DiT + full VAE",
+      "model": "miaomiao-anima-1.6"
+    },
+    {
+      "compute_backend": "D3D11 hardware",
+      "gpu_linear": true,
+      "gpu_operation_counts": [
+        1422,
+        193,
+        170,
+        168,
+        37,
+        568,
+        272,
+        213,
+        410,
+        3
+      ],
+      "width": 256,
+      "height": 256,
+      "steps": 2,
+      "elapsed_ms": 42152,
+      "pipeline": "Anima Preview3: Qwen + adapter + 28-block DiT + full VAE",
+      "model": "anima-preview3"
+    },
+    {
+      "compute_backend": "D3D11 hardware",
+      "gpu_linear": true,
+      "gpu_operation_counts": [
+        1806,
+        241,
+        242,
+        240,
+        37,
+        664,
+        320,
+        261,
+        482,
+        3
+      ],
+      "width": 256,
+      "height": 256,
+      "steps": 2,
+      "elapsed_ms": 55931,
+      "pipeline": "MiaoMiao Harem Anima 2.9B Beta 1.1: Qwen + adapter + 40-block DiT + full VAE",
+      "model": "miaomiao-anima-2.9b-beta1.1"
+    }
+  ],
+  "limitations": [
+    "Physical USB keyboard and physical controller interaction require separate verification; app input bridge was tested.",
+    "Suspend/resume not tested.",
+    "IDE ports editing, file search/save and native rustc metadata checks; old Git, terminal, AI and full project-build features are not yet ported.",
+    "No Xbox on-screen keyboard, IME, native file dialogs or system clipboard."
+  ],
+  "privacy": "Only existing engine/model/compiler runtime files were staged privately. No weights, engine binaries, compiler binaries, credentials or original Workbench presets are uploaded."
+}
