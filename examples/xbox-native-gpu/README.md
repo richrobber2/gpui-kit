@@ -51,8 +51,10 @@ at the end. Packaging is for Developer Mode, not a retail Xbox or Store release.
   lifecycle, input and resize callbacks.
 - `ui/src/dispatcher.rs`: host-driven foreground executor and two background
   workers. UWP owns the event loop.
-- `ui/src/lib.rs`: GPUI Kit theme, component workbench, controller selection,
-  retained result state and guarded C ABI. Panics cannot unwind across C++.
+- `ui/src/lib.rs`: GPUI Kit theme, lifecycle and guarded C ABI. Panics cannot
+  unwind across C++.
+- `ui/src/workbench.rs`: component composition, controller commands and bounded
+  session result history.
 - `src/App.cpp`: CoreWindow, gamepad polling, OS font loading, native GPU work
   and LocalState report storage. Direct2D no longer draws the interface.
 - `patches/`: pinned GPUI WGPU and WGPU HAL changes for DirectX 12 selection and

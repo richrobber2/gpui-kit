@@ -32,7 +32,8 @@ Rust 使用 `x86_64-uwp-windows-msvc` target，以 nightly `build-std` 构建标
 
 - `ui/src/platform.rs`：单窗口 GPUI platform、文字排版、绘制、生命周期、输入和尺寸变化回调。
 - `ui/src/dispatcher.rs`：由宿主驱动的前台 executor 和两个后台 worker；UWP 负责事件循环。
-- `ui/src/lib.rs`：GPUI Kit theme、组件工作台、手柄选择和结果状态，以及阻止 panic 跨越 C++ 边界的 C ABI。
+- `ui/src/lib.rs`：GPUI Kit theme、生命周期，以及阻止 panic 跨越 C++ 边界的 C ABI。
+- `ui/src/workbench.rs`：组件组合、手柄命令，以及有数量上限的会话结果历史。
 - `src/App.cpp`：CoreWindow、手柄轮询、系统字体加载、原生 GPU 运算和 LocalState 报告保存。界面不再通过 Direct2D 绘制。
 - `patches/`：固定版本的 GPUI WGPU 和 WGPU HAL 补丁，支持 DirectX 12 和 `CreateSwapChainForCoreWindow`。HAL 持有 COM 引用，不将 CoreWindow 当成 HWND。
 

@@ -42,5 +42,36 @@
     "suspension/resume",
     "full GPUI Cargo/UWP packaging on console",
     "performance throughput speedup"
-  ]
+  ],
+  "componentWorkbench": {
+    "sourceCommit": "21fc9fd8dbccb0a717007db866b0c656f8641d5c",
+    "artifactRun": 36951007431,
+    "appxSha256": "c6edd246184e85fccdbd02ec67fc5c0628c42bc1307cad6e23b8e6ba3a53f0d2",
+    "gpuiDx12Rendered": true,
+    "components": [
+      "ButtonGroup",
+      "Button",
+      "TabBar",
+      "DescriptionList",
+      "Tag",
+      "Progress"
+    ],
+    "nativeGpuResult": {
+      "version": 1,
+      "backend": "native D3D11 hardware cs_5_0",
+      "workload": "C=A*B row-major float32",
+      "n": 256,
+      "verified": true,
+      "mismatches": 0,
+      "cpuMs": 18.773008,
+      "gpuTotalMs": 17.169858,
+      "appMemoryLimitBytes": 5368709120,
+      "timingScope": "one sample; CPU scalar reference; GPU allocation, upload, dispatch, sync and readback; shader creation excluded"
+    },
+    "notVerified": [
+      "physical controller interaction",
+      "switching history tabs on device",
+      "suspension/resume"
+    ]
+  }
 }
