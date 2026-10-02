@@ -67,6 +67,8 @@ impl Precision {
 struct Request {
     #[serde(default, skip_serializing_if = "Precision::is_fp32")]
     precision: Precision,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    weight_cache_mib: Option<u32>,
     model: String,
     prompt: String,
     negative_prompt: String,
@@ -80,6 +82,11 @@ struct Request {
 }
 impl Request {
     fn validate(&self) -> anyhow::Result<()> {
+        anyhow::ensure!(
+            self.weight_cache_mib
+                .is_none_or(|mib| mib <= 256 && !self.precision.is_fp32()),
+            "Weight cache override requires mixed precision and 0–256 MiB"
+        );
         anyhow::ensure!(MODELS.iter().any(|m| m.0 == self.model), "Unknown model");
         anyhow::ensure!(
             !self.prompt.trim().is_empty()
@@ -231,6 +238,7 @@ impl Studio {
         }
         let request = Request {
             precision: self.precision,
+            weight_cache_mib: None,
             model: MODELS[self.selected].0.into(),
             prompt: self.prompt.read(cx).value().to_string(),
             negative_prompt: "blurry, low quality".into(),
