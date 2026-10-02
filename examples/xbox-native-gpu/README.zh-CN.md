@@ -1,0 +1,34 @@
+# GPUI Kit Xbox 原型
+
+本示例将 GPUI Kit 嵌入 Xbox UWP 原生应用。界面由 GPUI 的 WGPU renderer 通过 DirectX 12 和 CoreWindow 绘制；矩阵运算和数值校验沿用 [richrobber2/xbox-native-gpu](https://github.com/richrobber2/xbox-native-gpu) 的 Direct3D 11 实现。
+
+这是实验性平台后端。构建成功不代表已在 Xbox 上运行；启动、手柄输入、挂起和 GPU 绘制仍需设备验证。
+
+## 构建
+
+运行仓库中的 **Actions → Build GPUI Kit Xbox prototype**，或在安装了 Visual Studio UWP C++ v142 workload 和 Windows SDK 22621 及以上版本的 Windows 环境运行：
+
+```powershell
+rustup toolchain install nightly-2026-09-30 --profile minimal --component rust-src
+./examples/xbox-native-gpu/scripts/build.ps1
+```
+
+Rust 使用 `x86_64-uwp-windows-msvc` target，以 nightly `build-std` 构建标准库，不链接 GPUI 的桌面 Win32 platform。C++ 应用链接 Rust static library，编译 HLSL、生成 UWP 安装包并验证开发签名。构建产物名为 `gpui-kit-xbox-x64`。
+
+每次构建生成临时开发证书，产物仅包含公开 `.cer`；私钥在构建结束时删除。安装包用于 Developer Mode，不用于零售模式或 Store 发布。
+
+## 移植范围
+
+- `ui/src/platform.rs`：单窗口 GPUI platform、文字排版、绘制、生命周期、输入和尺寸变化回调。
+- `ui/src/dispatcher.rs`：由宿主驱动的前台 executor 和两个后台 worker；UWP 负责事件循环。
+- `ui/src/lib.rs`：GPUI Kit theme、Button、手柄选择和结果状态，以及阻止 panic 跨越 C++ 边界的 C ABI。
+- `src/App.cpp`：CoreWindow、手柄轮询、系统字体加载、原生 GPU 运算和 LocalState 报告保存。界面不再通过 Direct2D 绘制。
+- `patches/`：固定版本的 GPUI WGPU 和 WGPU HAL 补丁，支持 DirectX 12 和 `CreateSwapChainForCoreWindow`。HAL 持有 COM 引用，不将 CoreWindow 当成 HWND。
+
+准备脚本下载固定版本的 crate，验证并应用补丁，解码仓库中的图标。生成的源码、安装包和私钥不纳入版本控制；Rust lockfile 已提交。
+
+剪贴板、原生文件对话框、外部 URL、桌面菜单、文本编辑和 IME 尚未实现。目前支持 GPU lab 的手柄和键盘命令，尚不是通用 Xbox GPUI 发行版。
+
+## 验证
+
+本地 Android target 的 Rust check 验证 platform trait 和应用代码，不执行 CoreWindow/DirectX 12 路径。Windows workflow 构建真正的 UWP target、运行独立矩阵参考测试并验证安装包签名。设备验证步骤见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。

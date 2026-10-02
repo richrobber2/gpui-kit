@@ -78,6 +78,8 @@ public:
             gpuiCheck(gpui_xbox_start(reinterpret_cast<IUnknown*>(window_),bounds.Width,bounds.Height,font.data(),font.size(),&requestJob));
             uiReady_=true;
             gpuiCheck(gpui_xbox_visibility(visible_));
+            // Produce an initial verified hardware result when the demo opens.
+            gpuiCheck(gpui_xbox_key(GpuiKey::Run));
         } catch(const std::exception& e) { fail(e.what());return; }
         catch(Platform::Exception^ e) { fail("Windows initialization failed: "+std::to_string(e->HResult));return; }
         while(!closed_) {

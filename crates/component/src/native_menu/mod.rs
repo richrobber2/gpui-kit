@@ -22,23 +22,36 @@
 //!     .show(position, window, cx);
 //! ```
 
-#[cfg(target_os = "windows")]
+#[cfg(all(target_os = "windows", not(target_vendor = "uwp")))]
 use crate::ActiveTheme as _;
 use crate::Icon;
-#[cfg(any(target_os = "macos", target_os = "windows", test))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "windows", not(target_vendor = "uwp")),
+    test
+))]
 use crate::icon::IconSource;
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "windows", not(target_vendor = "uwp"))
+))]
 use gpui::AssetSource;
 use gpui::{Action, App, Pixels, Point, SharedString, Window};
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "windows", not(target_vendor = "uwp"))
+))]
 use gpui::{Image, ImageFormat};
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "windows", not(target_vendor = "uwp"))
+))]
 use std::{path::Path, sync::Arc};
 
 #[cfg(target_os = "macos")]
 mod macos;
-#[cfg(target_os = "windows")]
+#[cfg(all(target_os = "windows", not(target_vendor = "uwp")))]
 mod windows;
 
 // Drawn-menu fallback (used on platforms without an OS-native popup, e.g. Linux).
@@ -207,7 +220,7 @@ impl NativeMenu {
         {
             macos::show(self.items, cx.asset_source().clone(), position, window, cx);
         }
-        #[cfg(target_os = "windows")]
+        #[cfg(all(target_os = "windows", not(target_vendor = "uwp")))]
         {
             windows::show(
                 self.items,
@@ -218,12 +231,18 @@ impl NativeMenu {
                 cx,
             );
         }
-        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        #[cfg(not(any(
+            target_os = "macos",
+            all(target_os = "windows", not(target_vendor = "uwp"))
+        )))]
         fallback::show(self.items, position, window, cx);
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "windows", not(target_vendor = "uwp"))
+))]
 pub(super) fn resolve_icon_image(
     icon: &Icon,
     asset_source: &dyn AssetSource,
@@ -256,7 +275,10 @@ pub(super) fn resolve_icon_image(
     Some(Arc::new(Image::from_bytes(format, bytes)))
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "windows", not(target_vendor = "uwp"))
+))]
 fn image_format(path: &str, bytes: &[u8]) -> Option<ImageFormat> {
     if let Some(extension) = Path::new(path)
         .extension()
@@ -280,7 +302,10 @@ fn image_format(path: &str, bytes: &[u8]) -> Option<ImageFormat> {
     image_format_from_bytes(bytes)
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "windows", not(target_vendor = "uwp"))
+))]
 fn image_format_from_bytes(bytes: &[u8]) -> Option<ImageFormat> {
     let bytes = bytes.strip_prefix(b"\xef\xbb\xbf").unwrap_or(bytes);
     if bytes.starts_with(b"\x89PNG\r\n\x1a\n") {
@@ -309,7 +334,10 @@ fn image_format_from_bytes(bytes: &[u8]) -> Option<ImageFormat> {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "windows"))]
+#[cfg(any(
+    target_os = "macos",
+    all(target_os = "windows", not(target_vendor = "uwp"))
+))]
 fn is_svg_bytes(bytes: &[u8]) -> bool {
     let text = match std::str::from_utf8(&bytes[..bytes.len().min(256)]) {
         Ok(text) => text.trim_start(),
@@ -415,7 +443,10 @@ mod tests {
     }
 
     /// Icon resolution is only compiled for the platforms with an OS-native menu.
-    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    #[cfg(any(
+        target_os = "macos",
+        all(target_os = "windows", not(target_vendor = "uwp"))
+    ))]
     mod icon_resolution {
         use super::*;
         use std::{borrow::Cow, fs, path::PathBuf};
