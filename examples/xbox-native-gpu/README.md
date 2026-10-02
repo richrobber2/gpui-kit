@@ -172,4 +172,4 @@ intermediate preview, cancellation, editor save/undo/clipboard and native Rust
 diagnostics were checked through this app’s input bridge. Physical controller
 and keyboard interaction still need separate verification.
 
-The Models page shows the engine’s fixed FP32 compute precision. FP16 and BF16 controls are disabled because the staged engine has no selectable compute-precision request field; checkpoint storage types do not imply those compute modes.
+The Models page supports FP32 and, when the separately staged precision engine is present, FP16 mixed and BF16 mixed. Mixed modes pack linear/convolution inputs and weights into 16-bit GPU operands, with FP32 accumulation, normalization, attention reductions and outputs. They currently support 256 × 256 images. FP16 overflow fails with a recoverable error; no mode silently falls back. Completion checks the engine’s reported mode and nonzero packed operand/dispatch counters. Lower precision can change the image; faster generation is not promised.

@@ -35,9 +35,38 @@ const MODELS: [(&str, &str, &str); 3] = [
         "miaomiaoHarem_29BBETA11.safetensors",
     ),
 ];
+#[derive(Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum Precision {
+    #[default]
+    Fp32,
+    Fp16,
+    Bf16,
+}
+impl Precision {
+    fn is_fp32(&self) -> bool {
+        *self == Self::Fp32
+    }
+    fn id(self) -> &'static str {
+        match self {
+            Self::Fp32 => "fp32",
+            Self::Fp16 => "fp16",
+            Self::Bf16 => "bf16",
+        }
+    }
+    fn label(self) -> &'static str {
+        match self {
+            Self::Fp32 => "FP32",
+            Self::Fp16 => "FP16 mixed",
+            Self::Bf16 => "BF16 mixed",
+        }
+    }
+}
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 struct Request {
+    #[serde(default, skip_serializing_if = "Precision::is_fp32")]
+    precision: Precision,
     model: String,
     prompt: String,
     negative_prompt: String,
@@ -87,6 +116,7 @@ struct Job {
     width: u32,
     height: u32,
     preview_step: u32,
+    precision: Precision,
 }
 impl Drop for Job {
     fn drop(&mut self) {
@@ -108,6 +138,8 @@ pub(super) struct Studio {
     seed: u64,
     cfg: f64,
     available: [bool; 3],
+    precision: Precision,
+    mixed_available: bool,
     job: Option<Job>,
     image: Option<Arc<RenderImage>>,
     image_label: String,
@@ -139,6 +171,8 @@ impl Studio {
             seed: 42,
             cfg: 4.0,
             available: [false; 3],
+            precision: Precision::Fp32,
+            mixed_available: false,
             job: None,
             image: None,
             image_label: "No preview yet".into(),
@@ -159,6 +193,22 @@ impl Studio {
         cx.notify();
     }
     fn scan(&mut self) {
+        self.mixed_available = fs::metadata(Path::new(RUNTIME).join("anima-engine-precision.exe"))
+            .is_ok_and(|m| m.len() > 0)
+            && fs::read(Path::new(RUNTIME).join("precision-engine.json"))
+                .ok()
+                .filter(|bytes| bytes.len() <= 4096)
+                .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+                .is_some_and(|value| {
+                    value["schema"] == 1
+                        && value["accumulation"] == "fp32"
+                        && value["engine"] == "anima-engine-precision.exe"
+                        && ["fp16", "bf16"].iter().all(|mode| {
+                            value["modes"]
+                                .as_array()
+                                .is_some_and(|modes| modes.iter().any(|m| m == mode))
+                        })
+                });
         let common = [
             "anima-engine.exe",
             "qwen-tokenizer.json",
@@ -180,6 +230,7 @@ impl Studio {
             return;
         }
         let request = Request {
+            precision: self.precision,
             model: MODELS[self.selected].0.into(),
             prompt: self.prompt.read(cx).value().to_string(),
             negative_prompt: "blurry, low quality".into(),
@@ -203,6 +254,14 @@ impl Studio {
         let ix = MODELS.iter().position(|m| m.0 == request.model).unwrap();
         self.scan();
         anyhow::ensure!(
+            request.precision.is_fp32() || self.mixed_available,
+            "Mixed precision engine is unavailable"
+        );
+        anyhow::ensure!(
+            request.precision.is_fp32() || (request.width <= 256 && request.height <= 256),
+            "Mixed precision currently supports images up to 256 × 256"
+        );
+        anyhow::ensure!(
             self.available[ix],
             "The selected checkpoint or shared runtime is unavailable"
         );
@@ -216,7 +275,11 @@ impl Studio {
         let request_path = folder.join("request.json");
         fs::write(&request_path, serde_json::to_vec_pretty(&request)?)?;
         let output = folder.join("output");
-        let mut command = Command::new(Path::new(RUNTIME).join("anima-engine.exe"));
+        let mut command = Command::new(Path::new(RUNTIME).join(if request.precision.is_fp32() {
+            "anima-engine.exe"
+        } else {
+            "anima-engine-precision.exe"
+        }));
         command
             .arg("--generate")
             .arg(RUNTIME)
@@ -235,13 +298,18 @@ impl Studio {
         // Xbox's NUL stdin fails; an owned pipe delivers EOF without a NUL open.
         drop(child.stdin.take());
         self.selected = ix;
+        self.precision = request.precision;
         self.steps = request.steps;
         self.width = request.width;
         self.height = request.height;
         self.seed = request.seed;
         self.cfg = request.cfg_scale;
         self.progress = 0.0;
-        self.status = format!("Starting {} on the Xbox GPU…", MODELS[ix].1);
+        self.status = format!(
+            "Starting {} · {} on the Xbox GPU…",
+            MODELS[ix].1,
+            request.precision.label()
+        );
         self.job = Some(Job {
             child,
             folder: output,
@@ -250,6 +318,7 @@ impl Studio {
             width: request.width,
             height: request.height,
             preview_step: 0,
+            precision: request.precision,
         });
         self.publish_status();
         Ok(())
@@ -272,7 +341,7 @@ impl Studio {
     }
     fn publish_status(&self) {
         if let Some(root) = &self.root {
-            let s = serde_json::json!({"version":1,"available":self.available,"selected":MODELS[self.selected].0,"busy":self.job.is_some(),"status":self.status,"progress":self.progress,"preview":self.image_label});
+            let s = serde_json::json!({"version":1,"available":self.available,"selected":MODELS[self.selected].0,"busy":self.job.is_some(),"status":self.status,"progress":self.progress,"preview":self.image_label,"precision":self.precision.id(),"mixed_precision_available":self.mixed_available});
             let _ = fs::write(root.join("studio-status.json"), s.to_string());
         }
     }
@@ -368,10 +437,21 @@ impl Studio {
                             && report["gpu_linear"] == true,
                         "Generation did not report hardware GPU execution"
                     );
+                    if !job.precision.is_fp32() {
+                        anyhow::ensure!(
+                            report["precision"] == job.precision.id()
+                                && report["accumulation_precision"] == "fp32"
+                                && report["packed_operand_values"].as_u64().unwrap_or(0) > 0
+                                && report["mixed_precision_dispatches"].as_u64().unwrap_or(0) > 0,
+                            "Engine did not verify the selected mixed precision"
+                        );
+                    }
                     let used: serde_json::Value =
                         serde_json::from_slice(&fs::read(job.folder.join("request-used.json"))?)?;
                     anyhow::ensure!(
-                        used["model"] == job.model && used["steps"] == job.steps,
+                        used["model"] == job.model
+                            && used["steps"] == job.steps
+                            && (job.precision.is_fp32() || used["precision"] == job.precision.id()),
                         "Engine reported a different model"
                     );
                     let bytes = fs::read(job.folder.join("anima-output.png"))?;
@@ -399,7 +479,10 @@ impl Studio {
                             cx.drop_image(old, None);
                         }
                         self.image_label = format!("{} · final decoded image", job.model);
-                        self.status = "Generation complete · native Xbox GPU".into();
+                        self.status = format!(
+                            "Generation complete · {} · native Xbox GPU",
+                            job.precision.label()
+                        );
                         self.progress = 100.0;
                     }
                     Err(e) => self.status = format!("Generation failed: {e:#}"),
@@ -499,7 +582,7 @@ impl Render for Studio {
                             .flex_shrink_0()
                             .flex()
                             .flex_col()
-                            .gap_4()
+                            .gap_3()
                             .child("Downloaded checkpoints")
                             .child(models)
                             .child(div().text_sm().text_color(theme.muted_foreground).child(
@@ -509,33 +592,54 @@ impl Render for Studio {
                                     "Selected checkpoint or runtime unavailable"
                                 },
                             ))
+                            .child("Precision")
                             .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_4()
-                                    .child("Precision")
-                                    .child(
-                                        ButtonGroup::new("compute-precision").large().children([
-                                            Button::new("precision-fp32")
-                                                .label("FP32")
-                                                .selected(true)
-                                                .disabled(true),
-                                            Button::new("precision-fp16")
-                                                .label("FP16")
-                                                .disabled(true),
-                                            Button::new("precision-bf16")
-                                                .label("BF16")
-                                                .disabled(true),
-                                        ]),
-                                    ),
+                                ButtonGroup::new("compute-precision")
+                                    .large()
+                                    .disabled(busy)
+                                    .children([
+                                        Button::new("precision-fp32")
+                                            .label("FP32")
+                                            .selected(self.precision == Precision::Fp32),
+                                        Button::new("precision-fp16")
+                                            .label("FP16 mixed")
+                                            .selected(self.precision == Precision::Fp16)
+                                            .disabled(!self.mixed_available),
+                                        Button::new("precision-bf16")
+                                            .label("BF16 mixed")
+                                            .selected(self.precision == Precision::Bf16)
+                                            .disabled(!self.mixed_available),
+                                    ])
+                                    .on_click(cx.listener(|this, indices: &Vec<usize>, _, cx| {
+                                        if this.job.is_none() {
+                                            if let Some(mode) = indices
+                                                .first()
+                                                .and_then(|index| {
+                                                    [
+                                                        Precision::Fp32,
+                                                        Precision::Fp16,
+                                                        Precision::Bf16,
+                                                    ]
+                                                    .get(*index)
+                                                })
+                                                .copied()
+                                            {
+                                                if mode.is_fp32() || this.mixed_available {
+                                                    this.precision = mode;
+                                                    this.publish_status();
+                                                    cx.notify();
+                                                }
+                                            }
+                                        }
+                                    })),
                             )
-                            .child(
-                                div()
-                                    .text_sm()
-                                    .text_color(theme.muted_foreground)
-                                    .child("FP32 active; FP16/BF16 unavailable in this engine"),
-                            )
+                            .child(div().text_sm().text_color(theme.muted_foreground).child(
+                                if self.mixed_available {
+                                    "16-bit operands; FP32 accumulation and normalization"
+                                } else {
+                                    "Mixed precision engine unavailable; FP32 ready"
+                                },
+                            ))
                             .child("Prompt")
                             .child(Input::new(&self.prompt).large().disabled(busy))
                             .child(div().text_sm().text_color(theme.muted_foreground).child(
