@@ -474,37 +474,154 @@ impl Render for Studio {
                     }
                 }
             }));
-        div().size_full().flex().flex_col().p_8().gap_4().bg(theme.background).text_color(theme.foreground)
-            .font_family("Segoe UI").track_focus(&self.focus).on_key_down(cx.listener(Self::key))
+        div()
+            .size_full()
+            .flex()
+            .flex_col()
+            .p_8()
+            .gap_4()
+            .bg(theme.background)
+            .text_color(theme.foreground)
+            .font_family("Segoe UI")
+            .track_focus(&self.focus)
+            .on_key_down(cx.listener(Self::key))
             .child(div().text_2xl().font_semibold().child("Local image models"))
-            .child(div().flex_1().min_h_0().flex().items_stretch().gap_8()
-                .child(div().w(rems(23.0)).flex_shrink_0().flex().flex_col().gap_4()
-                    .child("Downloaded checkpoints").child(models)
-                    .child(div().text_sm().text_color(theme.muted_foreground).child(if self.available[self.selected]{"Checkpoint and shared runtime available"}else{"Selected checkpoint or runtime unavailable"}))
-                    .child(div().flex().items_center().gap_4()
-                        .child("Precision")
-                        .child(ButtonGroup::new("compute-precision").large().children([
-                            Button::new("precision-fp32").label("FP32").selected(true).disabled(true),
-                            Button::new("precision-fp16").label("FP16").disabled(true),
-                            Button::new("precision-bf16").label("BF16").disabled(true),
-                        ])))
-                    .child(div().text_sm().text_color(theme.muted_foreground)
-                        .child("FP32 active; FP16/BF16 unavailable in this engine"))
-                    .child("Prompt").child(Input::new(&self.prompt).large().disabled(busy))
-                    .child(div().text_sm().text_color(theme.muted_foreground).child(format!("{} × {} · {} steps · seed {} · CFG {}",self.width,self.height,self.steps,self.seed,self.cfg)))
-                    .child(Button::new("sampling-steps").label(format!("Sampling steps: {}",self.steps)).disabled(busy).on_click(cx.listener(|this,_,_,cx|{this.steps=if this.steps==4{12}else{4};cx.notify();})))
-                    .child(div().flex().gap_3()
-                        .child(Button::new("generate-image").primary().large().label("Generate").disabled(busy || !self.available[self.selected])
-                            .on_click(cx.listener(|this,_,_,cx|this.generate(cx))))
-                        .child(Button::new("cancel-image").large().label("Cancel").disabled(!busy).on_click(cx.listener(|this,_,_,cx|this.cancel(cx)))))
-                    .child(div().text_sm().child(self.status.clone()))
-                    .when(busy,|this|this.child(Progress::new("image-progress").loading(self.progress==0.0).value(self.progress).accessibility_label("Image sampling progress"))))
-                .child(div().flex_1().min_w_0().flex().flex_col().gap_3()
-                    .child("Live preview")
-                    .child(div().flex_1().min_h_0().flex().items_center().justify_center().border_1().border_color(theme.border)
-                        .when_some(self.image.clone(),|this,image|this.child(img(ImageSource::Render(image)).size_full().object_fit(ObjectFit::Contain)))
-                        .when(self.image.is_none(),|this|this.child("Generate to see sampling previews here.")))
-                    .child(div().text_sm().text_color(theme.muted_foreground).child(self.image_label.clone()))))
-            .child(div().text_sm().border_t_1().border_color(theme.border).pt_3().child("F6 / D-pad Move focus · Enter / A Activate · LB / RB Switch tools · Esc / B Cancel"))
+            .child(
+                div()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .items_stretch()
+                    .gap_8()
+                    .child(
+                        div()
+                            .w(rems(23.0))
+                            .flex_shrink_0()
+                            .flex()
+                            .flex_col()
+                            .gap_4()
+                            .child("Downloaded checkpoints")
+                            .child(models)
+                            .child(div().text_sm().text_color(theme.muted_foreground).child(
+                                if self.available[self.selected] {
+                                    "Checkpoint and shared runtime available"
+                                } else {
+                                    "Selected checkpoint or runtime unavailable"
+                                },
+                            ))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_4()
+                                    .child("Precision")
+                                    .child(
+                                        ButtonGroup::new("compute-precision").large().children([
+                                            Button::new("precision-fp32")
+                                                .label("FP32")
+                                                .selected(true)
+                                                .disabled(true),
+                                            Button::new("precision-fp16")
+                                                .label("FP16")
+                                                .disabled(true),
+                                            Button::new("precision-bf16")
+                                                .label("BF16")
+                                                .disabled(true),
+                                        ]),
+                                    ),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(theme.muted_foreground)
+                                    .child("FP32 active; FP16/BF16 unavailable in this engine"),
+                            )
+                            .child("Prompt")
+                            .child(Input::new(&self.prompt).large().disabled(busy))
+                            .child(div().text_sm().text_color(theme.muted_foreground).child(
+                                format!(
+                                    "{} × {} · {} steps · seed {} · CFG {}",
+                                    self.width, self.height, self.steps, self.seed, self.cfg
+                                ),
+                            ))
+                            .child(
+                                Button::new("sampling-steps")
+                                    .label(format!("Sampling steps: {}", self.steps))
+                                    .disabled(busy)
+                                    .on_click(cx.listener(|this, _, _, cx| {
+                                        this.steps = if this.steps == 4 { 12 } else { 4 };
+                                        cx.notify();
+                                    })),
+                            )
+                            .child(
+                                div()
+                                    .flex()
+                                    .gap_3()
+                                    .child(
+                                        Button::new("generate-image")
+                                            .primary()
+                                            .large()
+                                            .label("Generate")
+                                            .disabled(busy || !self.available[self.selected])
+                                            .on_click(
+                                                cx.listener(|this, _, _, cx| this.generate(cx)),
+                                            ),
+                                    )
+                                    .child(
+                                        Button::new("cancel-image")
+                                            .large()
+                                            .label("Cancel")
+                                            .disabled(!busy)
+                                            .on_click(
+                                                cx.listener(|this, _, _, cx| this.cancel(cx)),
+                                            ),
+                                    ),
+                            )
+                            .child(div().text_sm().child(self.status.clone()))
+                            .when(busy, |this| {
+                                this.child(
+                                    Progress::new("image-progress")
+                                        .loading(self.progress == 0.0)
+                                        .value(self.progress)
+                                        .accessibility_label("Image sampling progress"),
+                                )
+                            }),
+                    )
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .flex()
+                            .flex_col()
+                            .gap_3()
+                            .child("Live preview")
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .min_h_0()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .border_1()
+                                    .border_color(theme.border)
+                                    .when_some(self.image.clone(), |this, image| {
+                                        this.child(
+                                            img(ImageSource::Render(image))
+                                                .size_full()
+                                                .object_fit(ObjectFit::Contain),
+                                        )
+                                    })
+                                    .when(self.image.is_none(), |this| {
+                                        this.child("Generate to see sampling previews here.")
+                                    }),
+                            )
+                            .child(
+                                div()
+                                    .text_sm()
+                                    .text_color(theme.muted_foreground)
+                                    .child(self.image_label.clone()),
+                            ),
+                    ),
+            )
     }
 }
