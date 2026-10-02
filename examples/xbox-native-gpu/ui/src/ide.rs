@@ -110,6 +110,9 @@ impl Ide {
                 let mut entries: Vec<_> = fs::read_dir(root)?.filter_map(Result::ok).collect();
                 entries.sort_by_key(|e| e.file_name());
                 for e in entries {
+                    if e.file_name().to_string_lossy().starts_with('.') {
+                        continue;
+                    }
                     if files.len() >= 64 {
                         break;
                     }
