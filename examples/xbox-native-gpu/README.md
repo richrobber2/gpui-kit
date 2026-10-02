@@ -173,3 +173,6 @@ diagnostics were checked through this app’s input bridge. Physical controller
 and keyboard interaction still need separate verification.
 
 The Models page supports FP32 and, when the separately staged precision engine is present, FP16 mixed and BF16 mixed. Mixed modes pack linear/convolution inputs and weights into 16-bit GPU operands, with FP32 accumulation, normalization, attention reductions and outputs. They currently support 256 × 256 images. FP16 overflow fails with a recoverable error; no mode silently falls back. Completion checks the engine’s reported mode and nonzero packed operand/dispatch counters. Lower precision can change the image; faster generation is not promised.
+
+
+Xbox hardware verification: [precision report](validation/xbox-precision-2026-10-02.json). All three downloaded models completed FP16 and BF16 generation, with decoded PNGs and live previews. These low-step checks validate the pipeline, not image quality or performance. The measured mixed runs were slower than the existing FP32 engine.

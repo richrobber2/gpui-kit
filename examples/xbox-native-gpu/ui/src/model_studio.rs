@@ -542,20 +542,18 @@ impl Render for Studio {
         let models = ButtonGroup::new("downloaded-models")
             .layout(Axis::Vertical)
             .large()
-            .disabled(busy)
-            .children(
-                MODELS
-                    .iter()
-                    .enumerate()
-                    .map(|(ix, m)| Button::new(m.0).label(m.1).selected(ix == self.selected)),
-            )
-            .on_click(cx.listener(|this, indices: &Vec<usize>, _, cx| {
-                if this.job.is_none() {
-                    if let Some(ix) = indices.first() {
-                        this.selected = *ix;
-                        cx.notify();
-                    }
-                }
+            .children(MODELS.iter().enumerate().map(|(ix, m)| {
+                Button::new(m.0)
+                    .label(m.1)
+                    .selected(ix == self.selected)
+                    .disabled(busy)
+                    .on_click(cx.listener(move |this, _, _, cx| {
+                        if this.job.is_none() {
+                            this.selected = ix;
+                            this.publish_status();
+                            cx.notify();
+                        }
+                    }))
             }));
         div()
             .size_full()
@@ -594,44 +592,31 @@ impl Render for Studio {
                             ))
                             .child("Precision")
                             .child(
-                                ButtonGroup::new("compute-precision")
-                                    .large()
-                                    .disabled(busy)
-                                    .children([
-                                        Button::new("precision-fp32")
-                                            .label("FP32")
-                                            .selected(self.precision == Precision::Fp32),
-                                        Button::new("precision-fp16")
-                                            .label("FP16 mixed")
-                                            .selected(self.precision == Precision::Fp16)
-                                            .disabled(!self.mixed_available),
-                                        Button::new("precision-bf16")
-                                            .label("BF16 mixed")
-                                            .selected(self.precision == Precision::Bf16)
-                                            .disabled(!self.mixed_available),
-                                    ])
-                                    .on_click(cx.listener(|this, indices: &Vec<usize>, _, cx| {
-                                        if this.job.is_none() {
-                                            if let Some(mode) = indices
-                                                .first()
-                                                .and_then(|index| {
-                                                    [
-                                                        Precision::Fp32,
-                                                        Precision::Fp16,
-                                                        Precision::Bf16,
-                                                    ]
-                                                    .get(*index)
-                                                })
-                                                .copied()
-                                            {
-                                                if mode.is_fp32() || this.mixed_available {
+                                ButtonGroup::new("compute-precision").large().children(
+                                    [
+                                        ("precision-fp32", Precision::Fp32),
+                                        ("precision-fp16", Precision::Fp16),
+                                        ("precision-bf16", Precision::Bf16),
+                                    ]
+                                    .into_iter()
+                                    .map(|(id, mode)| {
+                                        Button::new(id)
+                                            .label(mode.label())
+                                            .selected(self.precision == mode)
+                                            .disabled(
+                                                busy || (!mode.is_fp32() && !self.mixed_available),
+                                            )
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                if this.job.is_none()
+                                                    && (mode.is_fp32() || this.mixed_available)
+                                                {
                                                     this.precision = mode;
                                                     this.publish_status();
                                                     cx.notify();
                                                 }
-                                            }
-                                        }
-                                    })),
+                                            }))
+                                    }),
+                                ),
                             )
                             .child(div().text_sm().text_color(theme.muted_foreground).child(
                                 if self.mixed_available {

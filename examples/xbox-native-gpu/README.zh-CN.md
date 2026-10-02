@@ -117,3 +117,6 @@ Models/IDE/Controls 部署和原生运行验证见
 键盘交互仍需单独验证。
 
 Models 页面支持 FP32；单独部署精度引擎后，还可选择 FP16 mixed 和 BF16 mixed。混合模式将 linear/convolution 输入和权重打包为 16 位 GPU 操作数，累加、归一化、attention reduction 和输出仍使用 FP32。目前混合模式支持 256 × 256 图像。FP16 溢出会返回可恢复错误，不会静默切换模式。完成时会核对引擎报告的精度及非零打包操作数和 dispatch 计数。降低精度可能改变图像，不承诺生成速度提升。
+
+
+Xbox 硬件验证见[精度报告](validation/xbox-precision-2026-10-02.json)。三个已下载模型均完成 FP16 和 BF16 生成，并输出解码 PNG 和实时预览。这些低步数检查验证完整流程，不代表画质或性能基准；实测混合精度比现有 FP32 引擎更慢。
