@@ -11,6 +11,19 @@ The actual GPUI interface rendered through DirectX 12, and the native D3D11
 256×256 workload verified all 65,536 outputs. Physical controller input and
 suspension/resume still need separate verification.
 
+## Component workbench
+
+The UI composes GPUI Kit `ButtonGroup`, `Button`, `TabBar`, `DescriptionList`,
+`Tag` and `Progress` components around the native workload. Size selection and
+execution are separate actions. Latest result shows verification and timings;
+Recent runs retains the newest five samples for this session. Changing views
+never starts a workload. All components share the television typography scale.
+
+D-pad left/right selects size; A / Enter runs it; up shows Latest result and down
+shows Recent runs. Tab switches views. X runs 128×128; Y runs 64×64. While a job
+is pending, size changes and duplicate run requests are blocked; an error leaves
+prior results available. These are individual samples, not a throughput benchmark.
+
 ## Build
 
 Run **Actions → Build GPUI Kit Xbox prototype** in this repository, or use a
@@ -38,7 +51,7 @@ at the end. Packaging is for Developer Mode, not a retail Xbox or Store release.
   lifecycle, input and resize callbacks.
 - `ui/src/dispatcher.rs`: host-driven foreground executor and two background
   workers. UWP owns the event loop.
-- `ui/src/lib.rs`: GPUI Kit theme, real Button components, controller selection,
+- `ui/src/lib.rs`: GPUI Kit theme, component workbench, controller selection,
   retained result state and guarded C ABI. Panics cannot unwind across C++.
 - `src/App.cpp`: CoreWindow, gamepad polling, OS font loading, native GPU work
   and LocalState report storage. Direct2D no longer draws the interface.

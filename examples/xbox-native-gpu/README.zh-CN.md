@@ -4,6 +4,17 @@
 
 这是实验性平台后端，已于 2026-10-02 在 Xbox Series X 上启动。实际 GPUI 界面通过 DirectX 12 绘制，D3D11 的 256×256 计算验证了全部 65,536 个输出。实体手柄输入及挂起/恢复仍需单独验证。
 
+## Component 工作台
+
+界面使用 GPUI Kit 的 `ButtonGroup`、`Button`、`TabBar`、`DescriptionList`、
+`Tag` 和 `Progress` 组合原生计算流程。选择尺寸与执行计算分开；Latest result
+显示校验和耗时，Recent runs 保存当前会话最新的五次结果。切换视图不会执行计算。
+所有组件统一采用适合电视观看的字号比例。
+
+方向键左/右选择尺寸，A / Enter 执行，上显示最新结果，下显示历史结果，Tab
+切换视图。X 执行 128×128，Y 执行 64×64。计算期间禁止改变尺寸和重复执行；
+发生错误时仍可查看之前的结果。每次结果仅为单次采样，不代表吞吐量基准。
+
 ## 构建
 
 运行仓库中的 **Actions → Build GPUI Kit Xbox prototype**，或在安装了 Visual Studio UWP C++ v142 workload 和 Windows SDK 22621 及以上版本的 Windows 环境运行：
@@ -21,7 +32,7 @@ Rust 使用 `x86_64-uwp-windows-msvc` target，以 nightly `build-std` 构建标
 
 - `ui/src/platform.rs`：单窗口 GPUI platform、文字排版、绘制、生命周期、输入和尺寸变化回调。
 - `ui/src/dispatcher.rs`：由宿主驱动的前台 executor 和两个后台 worker；UWP 负责事件循环。
-- `ui/src/lib.rs`：GPUI Kit theme、Button、手柄选择和结果状态，以及阻止 panic 跨越 C++ 边界的 C ABI。
+- `ui/src/lib.rs`：GPUI Kit theme、组件工作台、手柄选择和结果状态，以及阻止 panic 跨越 C++ 边界的 C ABI。
 - `src/App.cpp`：CoreWindow、手柄轮询、系统字体加载、原生 GPU 运算和 LocalState 报告保存。界面不再通过 Direct2D 绘制。
 - `patches/`：固定版本的 GPUI WGPU 和 WGPU HAL 补丁，支持 DirectX 12 和 `CreateSwapChainForCoreWindow`。HAL 持有 COM 引用，不将 CoreWindow 当成 HWND。
 
