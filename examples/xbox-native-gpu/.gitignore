@@ -7,3 +7,5 @@
 *.pfx
 /generated-matrix-test.exe
 /*.obj
+
+/generated-model-preview-test.exe

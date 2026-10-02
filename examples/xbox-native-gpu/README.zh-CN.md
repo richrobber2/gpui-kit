@@ -4,6 +4,28 @@
 
 这是实验性平台后端，已于 2026-10-02 在 Xbox Series X 上启动。实际 GPUI 界面通过 DirectX 12 绘制，D3D11 的 256×256 计算验证了全部 65,536 个输出。实体手柄输入及挂起/恢复仍需单独验证。
 
+## 已下载模型工作台
+
+Image models 为默认工具，LB / F1 切换至 GPU verification。工作台选择
+`D:\DevelopmentFiles\AnimaModels` 中现有的 Anima Preview 3、MiaoMiao Anima 1.6
+及 MiaoMiao Anima 2.9B Beta 1.1 checkpoint。私有原生引擎和共享 encoder、VAE、
+tokenizer 需放在 `D:\DevelopmentFiles\AnimaModels\GpuiRuntime`。仓库不包含
+引擎或权重，也不会自动下载。
+
+左/右选择模型，A / Enter 生成，X / F2 聚焦 prompt 以使用外接键盘编辑，Y 切换
+4/12 steps，B / Escape 取消或返回控制区。默认参数为 256×256、seed 42、CFG 4。
+生成期间禁止切换模型；切换工具时计算继续，正常退出应用时终止其拥有的子进程。
+
+GPUI 每个 sampling step 读取引擎的 `XRGB1` 预览。这是近似 latent preview，
+仅最终图像经过 VAE decode。完成时校验硬件执行、模型、steps 和图像尺寸。
+每次生成使用新的 LocalState 目录并保留输出和诊断。支持原生键盘字符输入，
+尚未实现 IME 和 Xbox 屏幕键盘。
+
+设备验证可明确上传一次性的 `studio-start.request` 到本应用 LocalState，使用完整
+原生 schema：`model`、`prompt`、`negative_prompt`、`seed`、`width`、`height`、
+`steps`、`cfg_scale`、`gpu: true`、`preview_every: 1`。空闲时仅消费一次。
+`studio-status.json` 提供模型可用状态、进度和错误；不读取现有 Workbench presets。
+
 ## Component 工作台
 
 界面使用 GPUI Kit 的 `ButtonGroup`、`Button`、`TabBar`、`DescriptionList`、
@@ -39,7 +61,7 @@ Rust 使用 `x86_64-uwp-windows-msvc` target，以 nightly `build-std` 构建标
 
 准备脚本下载固定版本的 crate，验证并应用补丁，解码仓库中的图标。生成的源码、安装包和私钥不纳入版本控制；Rust lockfile 已提交。
 
-剪贴板、原生文件对话框、外部 URL、桌面菜单、文本编辑和 IME 尚未实现。目前支持 GPU lab 的手柄和键盘命令，尚不是通用 Xbox GPUI 发行版。
+剪贴板、原生文件对话框、外部 URL、桌面菜单和 IME 尚未实现。目前支持 GPU lab 的手柄和键盘命令，尚不是通用 Xbox GPUI 发行版。
 
 ## 验证
 

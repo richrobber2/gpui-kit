@@ -67,6 +67,7 @@ public:
         window->Closed += ref new TypedEventHandler<CoreWindow^,CoreWindowEventArgs^>(this,&App::Closed);
         window->VisibilityChanged += ref new TypedEventHandler<CoreWindow^,VisibilityChangedEventArgs^>(this,&App::Visibility);
         window->SizeChanged += ref new TypedEventHandler<CoreWindow^,WindowSizeChangedEventArgs^>(this,&App::Resize);
+        window->CharacterReceived += ref new TypedEventHandler<CoreWindow^,CharacterReceivedEventArgs^>(this,&App::Character);
         window->KeyDown += ref new TypedEventHandler<CoreWindow^,KeyEventArgs^>(this,&App::Key);
     }
     virtual void Load(Platform::String^) {}
@@ -78,8 +79,8 @@ public:
             gpuiCheck(gpui_xbox_start(reinterpret_cast<IUnknown*>(window_),bounds.Width,bounds.Height,font.data(),font.size(),&requestJob));
             uiReady_=true;
             gpuiCheck(gpui_xbox_visibility(visible_));
-            // Produce an initial verified hardware result when the demo opens.
-            gpuiCheck(gpui_xbox_key(GpuiKey::Run));
+            auto root = Windows::Storage::ApplicationData::Current->LocalFolder->Path;
+            gpuiCheck(gpui_xbox_storage(reinterpret_cast<const std::uint16_t*>(root->Data()), root->Length()));
         } catch(const std::exception& e) { fail(e.what());return; }
         catch(Platform::Exception^ e) { fail("Windows initialization failed: "+std::to_string(e->HResult));return; }
         while(!closed_) {
@@ -93,9 +94,9 @@ public:
                     auto buttons=pads->GetAt(0)->GetCurrentReading().Buttons;
                     auto pressed=static_cast<unsigned long long>(buttons)&~previous_;
                     previous_=static_cast<unsigned long long>(buttons);
-                    const GamepadButtons masks[]={GamepadButtons::A,GamepadButtons::DPadLeft,GamepadButtons::DPadRight,GamepadButtons::DPadUp,GamepadButtons::DPadDown,GamepadButtons::X,GamepadButtons::Y};
-                    const GpuiKey codes[]={GpuiKey::Run,GpuiKey::Left,GpuiKey::Right,GpuiKey::Up,GpuiKey::Down,GpuiKey::Medium,GpuiKey::Small};
-                    for(unsigned i=0;i<7;++i) if(pressed&static_cast<unsigned long long>(masks[i])) gpuiCheck(gpui_xbox_key(codes[i]));
+                    const GamepadButtons masks[]={GamepadButtons::A,GamepadButtons::DPadLeft,GamepadButtons::DPadRight,GamepadButtons::DPadUp,GamepadButtons::DPadDown,GamepadButtons::X,GamepadButtons::Y,GamepadButtons::LeftShoulder,GamepadButtons::B};
+                    const GpuiKey codes[]={GpuiKey::Run,GpuiKey::Left,GpuiKey::Right,GpuiKey::Up,GpuiKey::Down,GpuiKey::Medium,GpuiKey::Small,GpuiKey::SwitchTool,GpuiKey::Cancel};
+                    for(unsigned i=0;i<9;++i) if(pressed&static_cast<unsigned long long>(masks[i])) gpuiCheck(gpui_xbox_key(codes[i]));
                 } else previous_=0;
                 // Present the busy state before the synchronous native workload.
                 gpuiCheck(gpui_xbox_frame());
@@ -125,19 +126,26 @@ private:
     void Resize(CoreWindow^,WindowSizeChangedEventArgs^ e) {
         if(uiReady_ && gpui_xbox_resize(e->Size.Width,e->Size.Height) != 0) { save("error.txt",gpui_xbox_last_error());closed_=true; }
     }
+    void Character(CoreWindow^, CharacterReceivedEventArgs^ e) {
+        if(uiReady_ && gpui_xbox_character(e->KeyCode) != 0) { save("error.txt",gpui_xbox_last_error());closed_=true; }
+    }
     void Key(CoreWindow^,KeyEventArgs^ e) {
         if(!uiReady_) return;
         using Windows::System::VirtualKey;
         unsigned code=0;
         switch(e->VirtualKey) {
         case VirtualKey::Enter: code=GpuiKey::Run;break;
-        case VirtualKey::Space: case VirtualKey::X: code=GpuiKey::Medium;break;
+        case VirtualKey::F2: case VirtualKey::X: code=GpuiKey::Medium;break;
         case VirtualKey::Y: code=GpuiKey::Small;break;
         case VirtualKey::Left: code=GpuiKey::Left;break;
         case VirtualKey::Right: code=GpuiKey::Right;break;
         case VirtualKey::Up: code=GpuiKey::Up;break;
         case VirtualKey::Down: code=GpuiKey::Down;break;
         case VirtualKey::Tab: code=GpuiKey::Next;break;
+        case VirtualKey::F1: code=GpuiKey::SwitchTool;break;
+        case VirtualKey::Escape: code=GpuiKey::Cancel;break;
+        case VirtualKey::Back: code=GpuiKey::Backspace;break;
+        case VirtualKey::Delete: code=GpuiKey::Delete;break;
         default: return;
         }
         e->Handled=true;

@@ -1,6 +1,9 @@
 //! Real GPUI Kit application embedded in the UWP CoreWindow run loop.
 mod dispatcher;
+mod model_studio;
 mod platform;
+mod preview;
+mod tools;
 mod workbench;
 use anyhow::{Result, anyhow, bail};
 use gpui_kit::{
@@ -22,6 +25,7 @@ struct Host {
     app: ApplicationHandle,
     platform: Rc<XboxPlatform>,
     lab: Entity<Lab>,
+    studio: Entity<model_studio::Studio>,
 }
 thread_local! {
     static HOST: RefCell<Option<Host>> = const { RefCell::new(None) };
@@ -88,28 +92,48 @@ pub unsafe extern "C" fn gpui_xbox_start(
             Theme::global_mut(cx).font_size = px(24.0);
             Theme::sync_base(cx);
             let mut lab = None;
+            let mut studio = None;
             let startup = cx
                 .open_window(WindowOptions::default(), |window, cx| {
                     let content = cx.new(|cx| Lab::new(request, cx));
-                    let focus = content.read(cx).focus.clone();
+                    let images = cx.new(|cx| model_studio::Studio::new(window, cx));
+                    let focus = images.read(cx).focus.clone();
                     focus.focus(window, cx);
                     lab = Some(content.clone());
-                    cx.new(|cx| Root::new(content, window, cx))
+                    studio = Some(images.clone());
+                    let tools = cx.new(|_| tools::Tools::new(content, images));
+                    cx.new(|cx| Root::new(tools, window, cx))
                 })
-                .and_then(|_| lab.ok_or_else(|| anyhow!("GPUI window failed to initialize")));
+                .and_then(|_| {
+                    lab.zip(studio)
+                        .ok_or_else(|| anyhow!("GPUI window failed to initialize"))
+                });
             *launch_result.borrow_mut() = Some(startup);
         });
-        let lab = launched
+        let (lab, studio) = launched
             .borrow_mut()
             .take()
             .ok_or_else(|| anyhow!("GPUI launch callback did not run"))??;
-        HOST.with(|host| *host.borrow_mut() = Some(Host { app, platform, lab }));
+        HOST.with(|host| {
+            *host.borrow_mut() = Some(Host {
+                app,
+                platform,
+                lab,
+                studio,
+            })
+        });
         Ok(())
     })
 }
 #[unsafe(no_mangle)]
 pub extern "C" fn gpui_xbox_frame() -> i32 {
-    boundary(|| with_host(|host| host.platform.tick()))
+    boundary(|| {
+        with_host(|host| {
+            host.app
+                .update(|cx| host.studio.update(cx, |studio, cx| studio.poll(cx)));
+            host.platform.tick()
+        })
+    })
 }
 /// Stable input codes shared with GpuiBridge.h.
 #[unsafe(no_mangle)]
@@ -125,10 +149,43 @@ pub extern "C" fn gpui_xbox_key(code: u32) -> i32 {
                 6 => "x",
                 7 => "y",
                 8 => "tab",
+                9 => "f1",
+                10 => "escape",
+                11 => "backspace",
+                12 => "delete",
                 _ => return Ok(()),
             };
             host.platform.key(key)
         })
+    })
+}
+/// Host-owned ApplicationData path is copied; no cross-app storage is assumed.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn gpui_xbox_storage(path: *const u16, length: usize) -> i32 {
+    boundary(|| {
+        if path.is_null() || length == 0 || length > 32768 {
+            bail!("Invalid storage path");
+        }
+        let root = String::from_utf16(unsafe { std::slice::from_raw_parts(path, length) })?;
+        with_host(|host| {
+            host.app.update(|cx| {
+                host.studio
+                    .update(cx, |studio, cx| studio.storage(root.into(), cx))
+            });
+            Ok(())
+        })
+    })
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn gpui_xbox_character(code: u32) -> i32 {
+    boundary(|| {
+        let Some(character) = char::from_u32(code) else {
+            return Ok(());
+        };
+        if character.is_control() {
+            return Ok(());
+        }
+        with_host(|host| host.platform.text(&character.to_string()))
     })
 }
 #[unsafe(no_mangle)]

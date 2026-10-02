@@ -11,6 +11,34 @@ The actual GPUI interface rendered through DirectX 12, and the native D3D11
 256×256 workload verified all 65,536 outputs. Physical controller input and
 suspension/resume still need separate verification.
 
+## Downloaded model studio
+
+Image models is the default tool; LB / F1 switches to GPU verification.
+The studio selects the existing Anima Preview 3, MiaoMiao Anima 1.6 and
+MiaoMiao Anima 2.9B Beta 1.1 checkpoints in `D:\DevelopmentFiles\AnimaModels`.
+The private native engine and shared encoder/VAE/tokenizers must be staged in
+`D:\DevelopmentFiles\AnimaModels\GpuiRuntime`. Neither engines nor weights
+are shipped in this repository or downloaded automatically.
+
+Left/right selects a checkpoint, A / Enter generates, X / F2 focuses the prompt
+for a connected keyboard, Y toggles 4/12 steps, and B / Escape cancels or returns
+to the controls. Default generation is 256×256, seed 42 and CFG 4. Model changes
+are blocked during generation. Switching tools leaves an active job running;
+normal app shutdown terminates the owned child.
+
+The GPUI preview updates from the engine's `XRGB1` files every sampling step.
+These are approximate latent previews; only the final image is VAE-decoded.
+Completion checks hardware execution, selected model, steps and image dimensions.
+Each job gets a new LocalState directory; outputs and diagnostics are retained.
+Native keyboard character input is supported; IME and the Xbox on-screen keyboard
+are not implemented.
+
+For an explicit one-shot device check, upload `studio-start.request` to this
+app's LocalState using the full native request schema (`model`, `prompt`,
+`negative_prompt`, `seed`, `width`, `height`, `steps`, `cfg_scale`, `gpu: true`,
+`preview_every: 1`). It is consumed once when idle. `studio-status.json` reports
+availability, progress and errors. Existing Workbench presets are never read.
+
 ## Component workbench
 
 The UI composes GPUI Kit `ButtonGroup`, `Button`, `TabBar`, `DescriptionList`,
@@ -65,8 +93,7 @@ Preparation downloads the pinned crate releases, checks/applies these patches
 and decodes the checked-in package artwork. Generated sources, output packages
 and private signing material are ignored. The Rust lockfile is checked in.
 
-Clipboard, native file dialogs, external URL launching, desktop menus and text
-editing/IME are not implemented. This host currently supports controller and
+Clipboard, native file dialogs, external URL launching, desktop menus and IME are not implemented. This host currently supports controller and
 keyboard commands for the GPU lab. It is not a general Xbox GPUI distribution.
 
 ## Validation

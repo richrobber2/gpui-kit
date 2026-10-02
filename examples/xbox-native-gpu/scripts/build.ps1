@@ -18,6 +18,11 @@ $devShell = Join-Path $vs 'Common7\Tools\Launch-VsDevShell.ps1'
 $env:LIB = "$kitRoot\Lib\$($sdk.Name)\um\x64;$kitRoot\Lib\$($sdk.Name)\ucrt\x64;$env:LIB"
 & cargo +nightly-2026-09-30 build --manifest-path "$root\ui\Cargo.toml" --release --locked -Z build-std=std,panic_unwind --target x86_64-uwp-windows-msvc
 if ($LASTEXITCODE -ne 0) { throw 'GPUI Kit UWP Rust build failed.' }
+# The preview wire format must reject partial writes and preserve color channels.
+& rustc +nightly-2026-09-30 --edition 2024 --test "$root\ui\src\preview.rs" -o "$root\generated-model-preview-test.exe"
+if ($LASTEXITCODE -ne 0) { throw 'Model preview validation did not compile.' }
+& "$root\generated-model-preview-test.exe"
+if ($LASTEXITCODE -ne 0) { throw 'Model preview validation failed.' }
 # Run the existing independent CPU/reference validation before packaging.
 & cl /nologo /EHsc /std:c++17 /Fe"$root\generated-matrix-test.exe" "$root\tests\matrix_test.cpp"
 if ($LASTEXITCODE -ne 0) { throw 'Matrix validation did not compile.' }

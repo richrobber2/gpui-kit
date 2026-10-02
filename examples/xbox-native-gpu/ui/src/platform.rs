@@ -319,6 +319,24 @@ impl XboxPlatform {
         }
         Ok(())
     }
+    pub fn text(&self, text: &str) -> Result<()> {
+        if let Some(window) = self.window.borrow().clone() {
+            let callback = window.callbacks.borrow_mut().input.take();
+            if let Some(mut callback) = callback {
+                callback(PlatformInput::KeyDown(KeyDownEvent {
+                    keystroke: Keystroke {
+                        key: String::new(),
+                        key_char: Some(text.to_owned()),
+                        modifiers: Modifiers::default(),
+                    },
+                    is_held: false,
+                    prefer_character_input: true,
+                }));
+                window.callbacks.borrow_mut().input = Some(callback);
+            }
+        }
+        Ok(())
+    }
     pub fn resize(&self, width: f32, height: f32) {
         if let Some(window) = self.window.borrow().clone() {
             window.resize(width, height);
