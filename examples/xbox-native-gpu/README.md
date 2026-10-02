@@ -18,7 +18,9 @@ GPU and Controls; LB/RB and Ctrl 1–4 switch tools.
 The studio selects the existing Anima Preview 3, MiaoMiao Anima 1.6 and
 MiaoMiao Anima 2.9B Beta 1.1 checkpoints in `D:\DevelopmentFiles\AnimaModels`.
 The private native engine and shared encoder/VAE/tokenizers must be staged in
-`D:\DevelopmentFiles\AnimaModels\GpuiRuntime`. Neither engines nor weights
+`D:\DevelopmentFiles\AnimaModels\GpuiRuntime`, alongside the engine’s existing
+`VCRUNTIME140.dll` and `vcruntime140_1.dll` dependencies. The compiler bin directory
+also needs its runtime dependencies. Neither engines nor weights
 are shipped in this repository or downloaded automatically.
 
 Move focus to a checkpoint, prompt, sampling-steps button or Generate/Cancel,

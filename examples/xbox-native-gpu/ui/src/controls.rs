@@ -50,7 +50,7 @@ impl Render for Controls {
             .child(div().text_color(cx.theme().muted_foreground).child("One navigation scheme across Models, IDE, GPU and Controls."))
             .child(div().flex_1().min_h_0().flex().gap_6()
                 .child(div().flex_1().min_w_0().flex().flex_col().justify_center()
-                    .children(self.illustration.clone().map(|image| img(ImageSource::Render(image)).w_full().h(rems(16.)).object_fit(ObjectFit::Contain)))
+                    .children(self.illustration.clone().map(|image| img(ImageSource::Render(image)).w_full().h(rems(22.)).object_fit(ObjectFit::Contain)))
                     .child(div().text_color(cx.theme().muted_foreground).child("Elite paddles follow your Xbox Accessories profile.")))
                 .child(div().w(rems(24.)).flex().flex_col().justify_center()
                     .child(row("D-pad / Left stick", "Move focus"))

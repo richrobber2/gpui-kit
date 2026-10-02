@@ -217,7 +217,7 @@ pub extern "C" fn gpui_xbox_character(code: u32) -> i32 {
         if character.is_control() {
             return Ok(());
         }
-        with_host(|host| host.platform.text(&character.to_string()))
+        with_host(|host| text_input(host, &character.to_string()))
     })
 }
 #[unsafe(no_mangle)]
@@ -439,7 +439,7 @@ fn ui_probe(host: &Host) -> Result<()> {
                                 host.platform.key(&key)?
                             }
                             ProbeInput::Text { text } if text.len() <= 4096 => {
-                                host.platform.text(&text)?
+                                text_input(host, &text)?
                             }
                             ProbeInput::Activate => host.platform.key("enter")?,
                             _ => {}
@@ -476,4 +476,22 @@ pub unsafe extern "C" fn gpui_xbox_mono_font(font: *const u8, length: usize) -> 
             Ok(())
         })
     })
+}
+
+fn text_input(host: &Host, text: &str) -> Result<()> {
+    // A platform KeyDown alone does not commit characters in GPUI. Use the
+    // window's dispatch path, which inserts through the focused input handler.
+    host.app.update(|cx| {
+        host.window.update(cx, |_, window, cx| {
+            window.dispatch_keystroke(
+                Keystroke {
+                    key: String::new(),
+                    key_char: Some(text.into()),
+                    modifiers: Modifiers::default(),
+                },
+                cx,
+            );
+        })
+    })?;
+    Ok(())
 }

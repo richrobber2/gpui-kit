@@ -285,7 +285,7 @@ impl Ide {
             let mut command = Command::new(COMPILER);
             command
                 .current_dir(&directory)
-                .arg(&buffer.name)
+                .arg(directory.join(&buffer.name))
                 .args([
                     "--edition=2024",
                     "--emit=metadata",

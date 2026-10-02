@@ -9,7 +9,9 @@
 Models 为默认工具；LB/RB 或 Ctrl 1–4 在 Models、IDE、GPU、Controls 间切换。工作台选择
 `D:\DevelopmentFiles\AnimaModels` 中现有的 Anima Preview 3、MiaoMiao Anima 1.6
 及 MiaoMiao Anima 2.9B Beta 1.1 checkpoint。私有原生引擎和共享 encoder、VAE、
-tokenizer 需放在 `D:\DevelopmentFiles\AnimaModels\GpuiRuntime`。仓库不包含
+tokenizer 需放在 `D:\DevelopmentFiles\AnimaModels\GpuiRuntime`，同时放入引擎现有的
+`VCRUNTIME140.dll` 和 `vcruntime140_1.dll`；compiler bin 目录也需要其 runtime
+依赖。仓库不包含
 引擎或权重，也不会自动下载。
 
 用 F6、Shift F6 或方向键/左摇杆移动组件焦点，以 Enter/A 选择模型、编辑 prompt、
