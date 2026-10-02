@@ -1,5 +1,7 @@
 //! Real GPUI Kit application embedded in the UWP CoreWindow run loop.
+mod controls;
 mod dispatcher;
+mod ide;
 mod model_studio;
 mod platform;
 mod preview;
@@ -12,11 +14,14 @@ use gpui_kit::{
 };
 use platform::XboxPlatform;
 use std::{
+    cell::Cell,
     cell::RefCell,
     ffi::{CString, c_char, c_void},
     panic::{AssertUnwindSafe, catch_unwind},
+    path::PathBuf,
     ptr::NonNull,
     rc::Rc,
+    time::{Duration, Instant},
 };
 use workbench::{Lab, Sample};
 
@@ -26,6 +31,10 @@ struct Host {
     platform: Rc<XboxPlatform>,
     lab: Entity<Lab>,
     studio: Entity<model_studio::Studio>,
+    tools: Entity<tools::Tools>,
+    window: WindowHandle<Root>,
+    root: RefCell<Option<PathBuf>>,
+    probe_at: Cell<Instant>,
 }
 thread_local! {
     static HOST: RefCell<Option<Host>> = const { RefCell::new(None) };
@@ -93,6 +102,7 @@ pub unsafe extern "C" fn gpui_xbox_start(
             Theme::sync_base(cx);
             let mut lab = None;
             let mut studio = None;
+            let mut tool_entity = None;
             let startup = cx
                 .open_window(WindowOptions::default(), |window, cx| {
                     let content = cx.new(|cx| Lab::new(request, cx));
@@ -101,16 +111,22 @@ pub unsafe extern "C" fn gpui_xbox_start(
                     focus.focus(window, cx);
                     lab = Some(content.clone());
                     studio = Some(images.clone());
-                    let tools = cx.new(|_| tools::Tools::new(content, images));
+                    let editor = cx.new(|cx| ide::Ide::new(window, cx));
+                    let controls = cx.new(controls::Controls::new);
+                    let tools =
+                        cx.new(|cx| tools::Tools::new(content, images, editor, controls, cx));
+                    tool_entity = Some(tools.clone());
                     cx.new(|cx| Root::new(tools, window, cx))
                 })
-                .and_then(|_| {
-                    lab.zip(studio)
-                        .ok_or_else(|| anyhow!("GPUI window failed to initialize"))
+                .and_then(|window| {
+                    let (lab, studio) = lab
+                        .zip(studio)
+                        .ok_or_else(|| anyhow!("GPUI window failed to initialize"))?;
+                    Ok((lab, studio, tool_entity.unwrap(), window))
                 });
             *launch_result.borrow_mut() = Some(startup);
         });
-        let (lab, studio) = launched
+        let (lab, studio, tools, window) = launched
             .borrow_mut()
             .take()
             .ok_or_else(|| anyhow!("GPUI launch callback did not run"))??;
@@ -120,6 +136,10 @@ pub unsafe extern "C" fn gpui_xbox_start(
                 platform,
                 lab,
                 studio,
+                tools,
+                window,
+                root: RefCell::new(None),
+                probe_at: Cell::new(Instant::now()),
             })
         });
         Ok(())
@@ -129,8 +149,12 @@ pub unsafe extern "C" fn gpui_xbox_start(
 pub extern "C" fn gpui_xbox_frame() -> i32 {
     boundary(|| {
         with_host(|host| {
-            host.app
-                .update(|cx| host.studio.update(cx, |studio, cx| studio.poll(cx)));
+            host.app.update(|cx| {
+                host.studio.update(cx, |studio, cx| studio.poll(cx));
+                let ide = host.tools.read(cx).ide.clone();
+                ide.update(cx, |ide, cx| ide.poll(cx));
+            });
+            ui_probe(host)?;
             host.platform.tick()
         })
     })
@@ -168,10 +192,15 @@ pub unsafe extern "C" fn gpui_xbox_storage(path: *const u16, length: usize) -> i
         }
         let root = String::from_utf16(unsafe { std::slice::from_raw_parts(path, length) })?;
         with_host(|host| {
+            *host.root.borrow_mut() = Some(root.clone().into());
             host.app.update(|cx| {
                 host.studio
-                    .update(cx, |studio, cx| studio.storage(root.into(), cx))
-            });
+                    .update(cx, |studio, cx| studio.storage(root.clone().into(), cx));
+                let ide = host.tools.read(cx).ide.clone();
+                host.window.update(cx, |_, window, cx| {
+                    ide.update(cx, |ide, cx| ide.storage(root.into(), window, cx))
+                })
+            })?;
             Ok(())
         })
     })
@@ -272,4 +301,156 @@ pub extern "C" fn gpui_xbox_shutdown() -> i32 {
         });
         Ok(())
     })
+}
+
+fn command(host: &Host, code: u32) -> Result<()> {
+    host.app.update(|cx| {
+        host.window.update(cx, |_, window, cx| {
+            host.tools
+                .update(cx, |tools, cx| tools.command(code, window, cx))
+        })
+    })?;
+    Ok(())
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn gpui_xbox_command(code: u32) -> i32 {
+    boundary(|| with_host(|host| command(host, code)))
+}
+/// WinRT virtual key and modifier flags (Ctrl=1, Shift=2, Alt=4).
+#[unsafe(no_mangle)]
+pub extern "C" fn gpui_xbox_keyboard(vk: u32, modifiers: u32) -> i32 {
+    boundary(|| {
+        with_host(|host| {
+            let ctrl = modifiers & 1 != 0;
+            let shift = modifiers & 2 != 0;
+            let global = match (vk, ctrl, shift) {
+                (49..=52, true, _) => Some(vk - 48),
+                (112, _, _) => Some(4),
+                (117, _, true) => Some(8),
+                (117, _, false) => Some(7),
+                (80, true, true) => Some(9),
+                (80, true, false) => Some(14),
+                (83, true, _) => Some(11),
+                (116, _, _) => Some(12),
+                (27, _, _) => Some(10),
+                _ => None,
+            };
+            if let Some(code) = global {
+                return command(host, code);
+            }
+            let key = match vk {
+                8 => "backspace".into(),
+                9 => "tab".into(),
+                13 => "enter".into(),
+                32 => "space".into(),
+                33 => "pageup".into(),
+                34 => "pagedown".into(),
+                35 => "end".into(),
+                36 => "home".into(),
+                37 => "left".into(),
+                38 => "up".into(),
+                39 => "right".into(),
+                40 => "down".into(),
+                46 => "delete".into(),
+                65..=90 => char::from_u32(vk + 32).unwrap().to_string(),
+                _ => return Ok(()),
+            };
+            let key = format!(
+                "{}{}{}{}",
+                if ctrl { "ctrl-" } else { "" },
+                if shift { "shift-" } else { "" },
+                if modifiers & 4 != 0 { "alt-" } else { "" },
+                key
+            );
+            host.platform.key(&key)
+        })
+    })
+}
+/// Controller activation emits a complete key press, including release.
+#[unsafe(no_mangle)]
+pub extern "C" fn gpui_xbox_activate() -> i32 {
+    boundary(|| with_host(|host| host.platform.key("enter")))
+}
+#[unsafe(no_mangle)]
+pub extern "C" fn gpui_xbox_scroll(direction: i32) -> i32 {
+    boundary(|| {
+        with_host(|host| {
+            let handled = host.app.update(|cx| {
+                host.window.update(cx, |_, window, cx| {
+                    host.tools
+                        .update(cx, |tools, cx| tools.scroll(direction, window, cx))
+                })
+            })?;
+            if !handled {
+                host.platform.scroll(direction)?;
+            }
+            Ok(())
+        })
+    })
+}
+
+#[derive(serde::Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case", deny_unknown_fields)]
+enum ProbeInput {
+    Command { code: u32 },
+    Key { key: String },
+    Text { text: String },
+    Activate,
+}
+#[derive(serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ProbeRequest {
+    id: String,
+    inputs: Vec<ProbeInput>,
+}
+fn ui_probe(host: &Host) -> Result<()> {
+    if Instant::now() < host.probe_at.get() {
+        return Ok(());
+    }
+    host.probe_at
+        .set(Instant::now() + Duration::from_millis(250));
+    let Some(root) = host.root.borrow().clone() else {
+        return Ok(());
+    };
+    let file = root.join("navigation.request.json");
+    if let Ok(metadata) = std::fs::metadata(&file) {
+        if metadata.len() <= 65536 {
+            let request = std::fs::read(&file)
+                .ok()
+                .and_then(|b| serde_json::from_slice::<ProbeRequest>(&b).ok());
+            if let Some(request) = request {
+                if request.id.len() <= 128
+                    && request.inputs.len() <= 32
+                    && std::fs::rename(
+                        &file,
+                        root.join(format!("navigation-{}.consumed.json", uuid::Uuid::new_v4())),
+                    )
+                    .is_ok()
+                {
+                    for input in request.inputs {
+                        match input {
+                            ProbeInput::Command { code } if (1..=14).contains(&code) => {
+                                command(host, code)?
+                            }
+                            ProbeInput::Key { key } if key.len() <= 64 => {
+                                host.platform.key(&key)?
+                            }
+                            ProbeInput::Text { text } if text.len() <= 4096 => {
+                                host.platform.text(&text)?
+                            }
+                            ProbeInput::Activate => host.platform.key("enter")?,
+                            _ => {}
+                        }
+                    }
+                    let _ = std::fs::write(root.join("navigation.consumed.txt"), request.id);
+                }
+            }
+        }
+    }
+    let status = host.app.update(|cx| host.tools.read(cx).status(cx));
+    let _ = std::fs::write(
+        root.join("navigation-status.json"),
+        serde_json::to_vec(&status)?,
+    );
+    Ok(())
 }

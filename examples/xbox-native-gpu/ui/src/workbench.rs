@@ -69,7 +69,10 @@ impl Lab {
         self.error = Some(message);
         cx.notify();
     }
-    fn key(&mut self, event: &KeyDownEvent, _: &mut Window, cx: &mut Context<Self>) {
+    fn key(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.focus.is_focused(window) {
+            return;
+        }
         match event.keystroke.key.as_str() {
             "left" if !self.busy => self.selected = (self.selected + 2) % 3,
             "right" if !self.busy => self.selected = (self.selected + 1) % 3,

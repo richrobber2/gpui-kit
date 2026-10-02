@@ -103,6 +103,10 @@ pub(super) struct Studio {
     root: Option<PathBuf>,
     selected: usize,
     steps: u32,
+    width: u32,
+    height: u32,
+    seed: u64,
+    cfg: f64,
     available: [bool; 3],
     job: Option<Job>,
     image: Option<Arc<RenderImage>>,
@@ -130,6 +134,10 @@ impl Studio {
             root: None,
             selected: 0,
             steps: 4,
+            width: 256,
+            height: 256,
+            seed: 42,
+            cfg: 4.0,
             available: [false; 3],
             job: None,
             image: None,
@@ -175,11 +183,11 @@ impl Studio {
             model: MODELS[self.selected].0.into(),
             prompt: self.prompt.read(cx).value().to_string(),
             negative_prompt: "blurry, low quality".into(),
-            seed: 42,
-            width: 256,
-            height: 256,
+            seed: self.seed,
+            width: self.width,
+            height: self.height,
             steps: self.steps,
-            cfg_scale: 4.0,
+            cfg_scale: self.cfg,
             gpu: true,
             preview_every: 1,
         };
@@ -208,7 +216,8 @@ impl Studio {
         let request_path = folder.join("request.json");
         fs::write(&request_path, serde_json::to_vec_pretty(&request)?)?;
         let output = folder.join("output");
-        let mut child = Command::new(Path::new(RUNTIME).join("anima-engine.exe"))
+        let mut command = Command::new(Path::new(RUNTIME).join("anima-engine.exe"));
+        command
             .arg("--generate")
             .arg(RUNTIME)
             .arg(&request_path)
@@ -216,12 +225,21 @@ impl Studio {
             .current_dir(root)
             .stdin(Stdio::piped())
             .stdout(fs::File::create(folder.join("stdout.txt"))?)
-            .stderr(fs::File::create(folder.join("stderr.txt"))?)
-            .spawn()?;
+            .stderr(fs::File::create(folder.join("stderr.txt"))?);
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            command.creation_flags(0x08000000); // CREATE_NO_WINDOW on Xbox.
+        }
+        let mut child = command.spawn()?;
         // Xbox's NUL stdin fails; an owned pipe delivers EOF without a NUL open.
         drop(child.stdin.take());
         self.selected = ix;
         self.steps = request.steps;
+        self.width = request.width;
+        self.height = request.height;
+        self.seed = request.seed;
+        self.cfg = request.cfg_scale;
         self.progress = 0.0;
         self.status = format!("Starting {} on the Xbox GPU…", MODELS[ix].1);
         self.job = Some(Job {
@@ -399,6 +417,12 @@ impl Studio {
             cx.notify();
         }
     }
+    pub(super) fn back(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.job.is_some() {
+            self.cancel(cx);
+        }
+        self.focus.focus(window, cx);
+    }
     fn key(&mut self, event: &KeyDownEvent, window: &mut Window, cx: &mut Context<Self>) {
         if event.keystroke.key == "escape" {
             if self.job.is_some() {
@@ -408,7 +432,7 @@ impl Studio {
             cx.stop_propagation();
             return;
         }
-        if self.prompt.read(cx).focus_handle(cx).is_focused(window) {
+        if !self.focus.is_focused(window) {
             return;
         }
         match event.keystroke.key.as_str() {
@@ -458,7 +482,8 @@ impl Render for Studio {
                     .child("Downloaded checkpoints").child(models)
                     .child(div().text_sm().text_color(theme.muted_foreground).child(if self.available[self.selected]{"Checkpoint and shared runtime available"}else{"Selected checkpoint or runtime unavailable"}))
                     .child("Prompt").child(Input::new(&self.prompt).large().disabled(busy))
-                    .child(div().text_sm().text_color(theme.muted_foreground).child(format!("256 × 256 · {} steps · seed 42 · CFG 4",self.steps)))
+                    .child(div().text_sm().text_color(theme.muted_foreground).child(format!("{} × {} · {} steps · seed {} · CFG {}",self.width,self.height,self.steps,self.seed,self.cfg)))
+                    .child(Button::new("sampling-steps").label(format!("Sampling steps: {}",self.steps)).disabled(busy).on_click(cx.listener(|this,_,_,cx|{this.steps=if this.steps==4{12}else{4};cx.notify();})))
                     .child(div().flex().gap_3()
                         .child(Button::new("generate-image").primary().large().label("Generate").disabled(busy || !self.available[self.selected])
                             .on_click(cx.listener(|this,_,_,cx|this.generate(cx))))
@@ -471,6 +496,6 @@ impl Render for Studio {
                         .when_some(self.image.clone(),|this,image|this.child(img(ImageSource::Render(image)).size_full().object_fit(ObjectFit::Contain)))
                         .when(self.image.is_none(),|this|this.child("Generate to see sampling previews here.")))
                     .child(div().text_sm().text_color(theme.muted_foreground).child(self.image_label.clone()))))
-            .child(div().text_sm().border_t_1().border_color(theme.border).pt_3().child("LB / F1 Switch tools    ← / → Model    A / Enter Generate    X Edit prompt    Y 4 / 12 steps    B / Esc Cancel / controls"))
+            .child(div().text_sm().border_t_1().border_color(theme.border).pt_3().child("F6 / D-pad Move focus · Enter / A Activate · LB / RB Switch tools · Esc / B Cancel"))
     }
 }

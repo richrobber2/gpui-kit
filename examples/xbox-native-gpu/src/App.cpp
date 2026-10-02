@@ -91,13 +91,35 @@ public:
             try {
                 auto pads=Gamepad::Gamepads;
                 if(pads->Size) {
-                    auto buttons=pads->GetAt(0)->GetCurrentReading().Buttons;
+                    auto reading=pads->GetAt(0)->GetCurrentReading();
+                    auto buttons=reading.Buttons;
                     auto pressed=static_cast<unsigned long long>(buttons)&~previous_;
                     previous_=static_cast<unsigned long long>(buttons);
-                    const GamepadButtons masks[]={GamepadButtons::A,GamepadButtons::DPadLeft,GamepadButtons::DPadRight,GamepadButtons::DPadUp,GamepadButtons::DPadDown,GamepadButtons::X,GamepadButtons::Y,GamepadButtons::LeftShoulder,GamepadButtons::B};
-                    const GpuiKey codes[]={GpuiKey::Run,GpuiKey::Left,GpuiKey::Right,GpuiKey::Up,GpuiKey::Down,GpuiKey::Medium,GpuiKey::Small,GpuiKey::SwitchTool,GpuiKey::Cancel};
-                    for(unsigned i=0;i<9;++i) if(pressed&static_cast<unsigned long long>(masks[i])) gpuiCheck(gpui_xbox_key(codes[i]));
-                } else previous_=0;
+                    auto hit=[&](GamepadButtons mask){return (pressed&static_cast<unsigned long long>(mask))!=0;};
+                    if(hit(GamepadButtons::A)) gpuiCheck(gpui_xbox_activate());
+                    if(hit(GamepadButtons::B)) gpuiCheck(gpui_xbox_command(10));
+                    if(hit(GamepadButtons::LeftShoulder)) gpuiCheck(gpui_xbox_command(5));
+                    if(hit(GamepadButtons::RightShoulder)) gpuiCheck(gpui_xbox_command(6));
+                    if(hit(GamepadButtons::Menu)) gpuiCheck(gpui_xbox_command(9));
+                    if(hit(GamepadButtons::View)) gpuiCheck(gpui_xbox_command(4));
+                    const auto held=static_cast<unsigned long long>(buttons);
+                    const auto includes=[&](GamepadButtons mask){return (held&static_cast<unsigned long long>(mask))!=0;};
+                    int direction=0;
+                    if(includes(GamepadButtons::DPadDown)||includes(GamepadButtons::DPadRight)||reading.LeftThumbstickY < -0.55||reading.LeftThumbstickX > 0.55) direction=1;
+                    else if(includes(GamepadButtons::DPadUp)||includes(GamepadButtons::DPadLeft)||reading.LeftThumbstickY > 0.55||reading.LeftThumbstickX < -0.55) direction=-1;
+                    auto now=Clock::now();
+                    if(direction && (direction!=focusDirection_||now>=nextFocus_)) {
+                        gpuiCheck(gpui_xbox_command(direction>0?7:8));
+                        nextFocus_=now+std::chrono::milliseconds(direction!=focusDirection_?350:120);
+                    }
+                    focusDirection_=direction;
+                    int scroll=reading.RightTrigger>0.55?1:(reading.LeftTrigger>0.55?-1:0);
+                    if(scroll && (scroll!=scrollDirection_||now>=nextScroll_)) {
+                        gpuiCheck(gpui_xbox_scroll(scroll));
+                        nextScroll_=now+std::chrono::milliseconds(scroll!=scrollDirection_?350:160);
+                    }
+                    scrollDirection_=scroll;
+                } else {previous_=0;focusDirection_=0;scrollDirection_=0;}
                 // Present the busy state before the synchronous native workload.
                 gpuiCheck(gpui_xbox_frame());
                 auto n=requestedJob.exchange(0);
@@ -114,6 +136,8 @@ private:
     CoreWindow^ window_;
     bool closed_=false,visible_=true,uiReady_=false;
     unsigned long long previous_=0;
+    int focusDirection_=0,scrollDirection_=0;
+    Clock::time_point nextFocus_{},nextScroll_{};
     ComPtr<ID3D11Device> device_;
     ComPtr<ID3D11DeviceContext> context_;
     ComPtr<ID3D11ComputeShader> shader_;
@@ -126,30 +150,23 @@ private:
     void Resize(CoreWindow^,WindowSizeChangedEventArgs^ e) {
         if(uiReady_ && gpui_xbox_resize(e->Size.Width,e->Size.Height) != 0) { save("error.txt",gpui_xbox_last_error());closed_=true; }
     }
+    unsigned modifiers() {
+        using Windows::System::VirtualKey;
+        auto down=[&](VirtualKey key) {return (static_cast<unsigned>(window_->GetKeyState(key))&static_cast<unsigned>(CoreVirtualKeyStates::Down))!=0;};
+        return (down(VirtualKey::Control)?1u:0u)|(down(VirtualKey::Shift)?2u:0u)|(down(VirtualKey::Menu)?4u:0u);
+    }
     void Character(CoreWindow^, CharacterReceivedEventArgs^ e) {
-        if(uiReady_ && gpui_xbox_character(e->KeyCode) != 0) { save("error.txt",gpui_xbox_last_error());closed_=true; }
+        // Ctrl/Alt shortcuts do not also insert their printable character.
+        if(uiReady_ && !(modifiers()&5u) && gpui_xbox_character(e->KeyCode) != 0) { save("error.txt",gpui_xbox_last_error());closed_=true; }
     }
     void Key(CoreWindow^,KeyEventArgs^ e) {
         if(!uiReady_) return;
-        using Windows::System::VirtualKey;
-        unsigned code=0;
-        switch(e->VirtualKey) {
-        case VirtualKey::Enter: code=GpuiKey::Run;break;
-        case VirtualKey::F2: case VirtualKey::X: code=GpuiKey::Medium;break;
-        case VirtualKey::Y: code=GpuiKey::Small;break;
-        case VirtualKey::Left: code=GpuiKey::Left;break;
-        case VirtualKey::Right: code=GpuiKey::Right;break;
-        case VirtualKey::Up: code=GpuiKey::Up;break;
-        case VirtualKey::Down: code=GpuiKey::Down;break;
-        case VirtualKey::Tab: code=GpuiKey::Next;break;
-        case VirtualKey::F1: code=GpuiKey::SwitchTool;break;
-        case VirtualKey::Escape: code=GpuiKey::Cancel;break;
-        case VirtualKey::Back: code=GpuiKey::Backspace;break;
-        case VirtualKey::Delete: code=GpuiKey::Delete;break;
-        default: return;
-        }
+        const auto key=static_cast<unsigned>(e->VirtualKey);
+        const auto mods=modifiers();
+        // Printable input comes through CharacterReceived. This path supplies
+        // navigation, editing keys and modifier-aware app/editor shortcuts.
         e->Handled=true;
-        if(gpui_xbox_key(code) != 0) { save("error.txt",gpui_xbox_last_error());closed_=true; }
+        if(gpui_xbox_keyboard(key,mods) != 0) { save("error.txt",gpui_xbox_last_error());closed_=true; }
     }
     bool save(const std::string& name,const std::string& contents) {
         try {

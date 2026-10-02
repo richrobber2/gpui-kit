@@ -273,6 +273,7 @@ pub struct XboxPlatform {
     window: RefCell<Option<Rc<WindowState>>>,
     handle: Cell<Option<AnyWindowHandle>>,
     quit: Cell<bool>,
+    clipboard: RefCell<Option<ClipboardItem>>,
 }
 impl XboxPlatform {
     pub fn new(core: NonNull<c_void>, width: f32, height: f32, font: Vec<u8>) -> Result<Rc<Self>> {
@@ -288,6 +289,7 @@ impl XboxPlatform {
             window: RefCell::new(None),
             handle: Cell::new(None),
             quit: Cell::new(false),
+            clipboard: RefCell::new(None),
         }))
     }
     pub fn tick(&self) -> Result<()> {
@@ -314,10 +316,17 @@ impl XboxPlatform {
                     is_held: false,
                     prefer_character_input: false,
                 }));
+                callback(PlatformInput::KeyUp(KeyUpEvent {
+                    keystroke: Keystroke::parse(key)?,
+                }));
                 window.callbacks.borrow_mut().input = Some(callback);
             }
         }
         Ok(())
+    }
+    pub fn scroll(&self, direction: i32) -> Result<()> {
+        // Page commands use the focused scrollable component, including the editor.
+        self.key(if direction < 0 { "pageup" } else { "pagedown" })
     }
     pub fn text(&self, text: &str) -> Result<()> {
         if let Some(window) = self.window.borrow().clone() {
@@ -498,9 +507,11 @@ impl Platform for XboxPlatform {
         false
     }
     fn read_from_clipboard(&self) -> Option<ClipboardItem> {
-        None
+        self.clipboard.borrow().clone()
     }
-    fn write_to_clipboard(&self, _: ClipboardItem) {}
+    fn write_to_clipboard(&self, item: ClipboardItem) {
+        *self.clipboard.borrow_mut() = Some(item);
+    }
     #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     fn read_from_primary(&self) -> Option<ClipboardItem> {
         None

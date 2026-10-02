@@ -6,15 +6,15 @@
 
 ## 已下载模型工作台
 
-Image models 为默认工具，LB / F1 切换至 GPU verification。工作台选择
+Models 为默认工具；LB/RB 或 Ctrl 1–4 在 Models、IDE、GPU、Controls 间切换。工作台选择
 `D:\DevelopmentFiles\AnimaModels` 中现有的 Anima Preview 3、MiaoMiao Anima 1.6
 及 MiaoMiao Anima 2.9B Beta 1.1 checkpoint。私有原生引擎和共享 encoder、VAE、
 tokenizer 需放在 `D:\DevelopmentFiles\AnimaModels\GpuiRuntime`。仓库不包含
 引擎或权重，也不会自动下载。
 
-左/右选择模型，A / Enter 生成，X / F2 聚焦 prompt 以使用外接键盘编辑，Y 切换
-4/12 steps，B / Escape 取消或返回控制区。默认参数为 256×256、seed 42、CFG 4。
-生成期间禁止切换模型；切换工具时计算继续，正常退出应用时终止其拥有的子进程。
+用 F6、Shift F6 或方向键/左摇杆移动组件焦点，以 Enter/A 选择模型、编辑 prompt、
+切换 sampling steps 或执行 Generate/Cancel。默认参数为 256×256、seed 42、CFG 4。
+生成期间禁止切换模型；切换工具时计算继续，正常退出时终止应用拥有的子进程。
 
 GPUI 每个 sampling step 读取引擎的 `XRGB1` 预览。这是近似 latent preview，
 仅最终图像经过 VAE decode。完成时校验硬件执行、模型、steps 和图像尺寸。
@@ -33,9 +33,50 @@ GPUI 每个 sampling step 读取引擎的 `XRGB1` 预览。这是近似 latent p
 显示校验和耗时，Recent runs 保存当前会话最新的五次结果。切换视图不会执行计算。
 所有组件统一采用适合电视观看的字号比例。
 
-方向键左/右选择尺寸，A / Enter 执行，上显示最新结果，下显示历史结果，Tab
-切换视图。X 执行 128×128，Y 执行 64×64。计算期间禁止改变尺寸和重复执行；
-发生错误时仍可查看之前的结果。每次结果仅为单次采样，不代表吞吐量基准。
+聚焦尺寸按钮、Run 或 Latest/Recent tabs 后执行。计算期间禁止改变尺寸和重复运行；
+错误不清除已有结果。每次结果仅为单次采样，不代表吞吐量基准。
+
+## 全局键盘与手柄导航
+
+四个工具共用导航栏、命令列表和电视字号。手柄焦点命令与编辑器方向键分开；
+A 同时发送 key-down 和 key-up，直接激活 GPUI Kit 组件。
+
+| 手柄 | 键盘 | 操作 |
+| --- | --- | --- |
+| LB / RB | Ctrl 1–4 | 上一个/下一个工具；直接选择工具 |
+| 方向键 / 左摇杆 | F6 / Shift F6 | 下一个/上一个组件焦点 |
+| A | Enter / 按钮上的 Space | 激活当前组件 |
+| B | Escape | 关闭命令、返回、离开编辑器或取消任务 |
+| Menu | Ctrl Shift P | 命令列表 |
+| View | F1 | Controls |
+| LT / RT | 编辑器中的 Page Up / Page Down | 滚动工具、编辑器或 IDE 诊断 |
+
+摇杆 dead zone 为 0.55，首次重复延迟 350 ms，后续 120 ms；扳机后续 160 ms。
+Elite paddles 使用用户的 Xbox Accessories profile，不声称独立读取原始 paddle 事件。
+Controls 使用生成的透明手柄插图，绑定文本全部由 GPUI 绘制；prompt 见
+[design/imagegen-prompts.txt](design/imagegen-prompts.txt)。
+
+## GPUI IDE
+
+使用 GPUI Kit Editor/Input 移植源码编辑流程：每文件保留 buffer、undo/redo、选择、
+缩进、文件搜索、dirty 标记、保存以及本机 Rust 诊断。Ctrl P 聚焦文件搜索，Enter
+打开首个匹配项；Ctrl S 保存，F5 检查当前 Rust 文件。编辑器内 Tab 缩进，F6
+移动应用焦点。切换工具保留编辑内容和任务。复制/剪切/粘贴使用应用内剪贴板。
+
+优先使用 `D:\DevelopmentFiles\GpuiWorkspace`，否则使用本应用的
+`LocalState/workspace`；最多读取 64 个 Rust 文件、每个 1 MiB、八层目录，排除
+`target`、`.git` 和符号链接。仅当不存在时创建初始 main.rs。保存时拒绝覆盖外部
+修改，保留隐藏备份。检查以当前 buffers 的副本运行 `rustc --emit=metadata`，
+不保存或链接 binary。现有 Xbox compiler 需私有地放在
+`D:\DevelopmentFiles\GpuiRuntime\compiler`，仓库不包含 compiler binaries。
+旧 Workbench 的 Git、terminal、AI 和完整 project build 尚未全部移植。
+
+设备检查可在本应用 LocalState 上传一次性的 `navigation.request.json`：
+`{ "id": "unique", "inputs": [...] }`，最多 32 个输入、64 KiB。
+输入支持 `op: command` 加 `code`（1–4 工具，5/6 前后工具，7/8 前后焦点，9 命令，
+10 返回，11 保存，12 检查，13 编辑器，14 文件搜索），或 `op: key` 加 `key`、
+`op: text` 加 `text`、`op: activate`。请求仅消费一次，ack 为
+`navigation.consumed.txt`，状态和诊断见 `navigation-status.json`。
 
 ## 构建
 
@@ -61,7 +102,7 @@ Rust 使用 `x86_64-uwp-windows-msvc` target，以 nightly `build-std` 构建标
 
 准备脚本下载固定版本的 crate，验证并应用补丁，解码仓库中的图标。生成的源码、安装包和私钥不纳入版本控制；Rust lockfile 已提交。
 
-剪贴板、原生文件对话框、外部 URL、桌面菜单和 IME 尚未实现。目前支持 GPU lab 的手柄和键盘命令，尚不是通用 Xbox GPUI 发行版。
+系统剪贴板、原生文件对话框、外部 URL、桌面菜单、IME 和屏幕键盘尚未实现；这仍是实验性的单窗口 Xbox platform 移植。
 
 ## 验证
 

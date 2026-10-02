@@ -13,18 +13,18 @@ suspension/resume still need separate verification.
 
 ## Downloaded model studio
 
-Image models is the default tool; LB / F1 switches to GPU verification.
+Models is the default tool. The persistent navigation rail opens Models, IDE,
+GPU and Controls; LB/RB and Ctrl 1–4 switch tools.
 The studio selects the existing Anima Preview 3, MiaoMiao Anima 1.6 and
 MiaoMiao Anima 2.9B Beta 1.1 checkpoints in `D:\DevelopmentFiles\AnimaModels`.
 The private native engine and shared encoder/VAE/tokenizers must be staged in
 `D:\DevelopmentFiles\AnimaModels\GpuiRuntime`. Neither engines nor weights
 are shipped in this repository or downloaded automatically.
 
-Left/right selects a checkpoint, A / Enter generates, X / F2 focuses the prompt
-for a connected keyboard, Y toggles 4/12 steps, and B / Escape cancels or returns
-to the controls. Default generation is 256×256, seed 42 and CFG 4. Model changes
-are blocked during generation. Switching tools leaves an active job running;
-normal app shutdown terminates the owned child.
+Move focus to a checkpoint, prompt, sampling-steps button or Generate/Cancel,
+then activate it with Enter/A. Default generation is 256×256, seed 42 and CFG 4.
+Model changes are blocked during generation. Switching tools leaves an active
+job running; normal app shutdown terminates the owned child.
 
 The GPUI preview updates from the engine's `XRGB1` files every sampling step.
 These are approximate latent previews; only the final image is VAE-decoded.
@@ -47,10 +47,64 @@ execution are separate actions. Latest result shows verification and timings;
 Recent runs retains the newest five samples for this session. Changing views
 never starts a workload. All components share the television typography scale.
 
-D-pad left/right selects size; A / Enter runs it; up shows Latest result and down
-shows Recent runs. Tab switches views. X runs 128×128; Y runs 64×64. While a job
-is pending, size changes and duplicate run requests are blocked; an error leaves
-prior results available. These are individual samples, not a throughput benchmark.
+Focus a workload-size button, Run, or the Latest/Recent tabs and activate it.
+Size changes and duplicate runs are blocked while busy; errors leave prior
+results available. These are individual samples, not a throughput benchmark.
+
+## Keyboard and controller navigation
+
+All tools share one application shell, command list and television theme.
+Keyboard arrows keep their normal editing behavior. Controller focus movement
+uses a separate command bridge, not simulated editor arrow keys. A sends both
+key-down and key-up so standard GPUI Kit buttons actually activate.
+
+| Controller | Keyboard | Action |
+| --- | --- | --- |
+| LB / RB | Ctrl 1–4 | Previous/next tool; direct tool selection |
+| D-pad / left stick | F6 / Shift F6 | Next/previous focusable control |
+| A | Enter / Space on buttons | Activate focused control |
+| B | Escape | Close commands, return from Controls, leave editor, cancel active job |
+| Menu | Ctrl Shift P | Commands |
+| View | F1 | Controls |
+| LT / RT | Page Up / Page Down in editor | Scroll active tool; editor pages or IDE diagnostics |
+
+Stick navigation has a 0.55 dead zone, 350 ms initial repeat delay and 120 ms
+repeat interval; triggers repeat at 160 ms. Elite paddles follow the user's
+[Xbox Accessories profile](https://news.xbox.com/en-us/2023/10/26/xbox-october-update-2023/).
+The app does not claim separate raw paddle events. Controls uses a generated
+transparent controller illustration, with all binding text rendered by GPUI.
+The artwork prompts are in [design/imagegen-prompts.txt](design/imagegen-prompts.txt).
+
+## GPUI IDE
+
+The IDE ports the source-editing workflow into GPUI Kit `Editor` and `Input`
+components: retained per-file buffers, undo/redo, selection, indentation, a
+searchable file list, dirty markers, explicit Save and native Rust diagnostics.
+Ctrl P focuses file search; Enter opens the first match. Ctrl S saves; F5 checks
+the selected Rust source. Tab indents within the editor; F6 moves application
+focus without consuming Tab. Switching tools preserves buffers and running jobs.
+Copy/cut/paste use an app-local clipboard; there is no cross-app clipboard yet.
+
+The workspace is `D:\DevelopmentFiles\GpuiWorkspace` when present, otherwise
+this app's `LocalState/workspace`. Discovery is bounded to 64 Rust files, 1 MiB
+per file and eight directory levels, excluding `target`, `.git` and symlinks.
+An initial `main.rs` is created only if missing. Saves reject external edits
+and retain the prior version as a hidden backup. Checks compile a snapshot of
+open buffers with `rustc --emit=metadata`, without saving or linking a binary.
+The existing Xbox compiler must be privately staged at
+`D:\DevelopmentFiles\GpuiRuntime\compiler`; no compiler binaries are in git.
+This is the GPUI editing/checking port, not yet parity with the old Workbench's
+Git, terminal, AI and full project-build features.
+
+For device verification, the app consumes its own `navigation.request.json`
+once, with `{ "id": "unique", "inputs": [...] }`. Each input is
+`{ "op": "command", "code": 1 }` (1–4 tools, 5/6 previous/next, 7/8 focus,
+9 commands, 10 back, 11 save, 12 check, 13 IDE editor, 14 IDE files),
+`{ "op": "key", "key": "ctrl-a" }`, `{ "op": "text", "text": "..." }`, or
+`{ "op": "activate" }`. Maximum 32 inputs and 64 KiB per request. Requests are
+renamed once; `navigation.consumed.txt` acknowledges the ID and
+`navigation-status.json` reports active tool and IDE diagnostics. This is scoped
+to this app's LocalState, not the original Workbench's storage.
 
 ## Build
 
@@ -93,8 +147,9 @@ Preparation downloads the pinned crate releases, checks/applies these patches
 and decodes the checked-in package artwork. Generated sources, output packages
 and private signing material are ignored. The Rust lockfile is checked in.
 
-Clipboard, native file dialogs, external URL launching, desktop menus and IME are not implemented. This host currently supports controller and
-keyboard commands for the GPU lab. It is not a general Xbox GPUI distribution.
+Native file dialogs, external URL launching, system clipboard, desktop menus,
+IME and the on-screen keyboard are not implemented. This remains an experimental
+single-window Xbox platform port.
 
 ## Validation
 

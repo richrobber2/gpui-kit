@@ -10,6 +10,10 @@ int gpui_xbox_frame();
 int gpui_xbox_storage(const std::uint16_t* path, std::size_t length);
 int gpui_xbox_character(std::uint32_t code);
 int gpui_xbox_key(std::uint32_t code);
+int gpui_xbox_command(std::uint32_t code);
+int gpui_xbox_keyboard(std::uint32_t virtualKey, std::uint32_t modifiers);
+int gpui_xbox_activate();
+int gpui_xbox_scroll(std::int32_t direction);
 int gpui_xbox_resize(float width, float height);
 int gpui_xbox_visibility(int visible);
 int gpui_xbox_result(std::uint32_t n, double cpu, double gpu, double maxError,
