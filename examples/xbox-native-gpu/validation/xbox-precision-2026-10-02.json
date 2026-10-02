@@ -182,12 +182,38 @@
     "Full Qwen, adapter, selected 28/40-block DiT and VAE generation",
     "D3D11 hardware report, requested mode, FP32 accumulation and nonzero packed operand/dispatch counts",
     "256 x 256 decoded PNG and per-step XRGB1 live preview",
-    "All six decoded images visually inspected; low-step model checks are not quality benchmarks"
+    "All six decoded images visually inspected; low-step model checks are not quality benchmarks",
+    "Enter selects models and all precision modes; Enter on Generate completes a four-step BF16 job through the actual button handler"
   ],
   "limitations": [
     "16-bit operands with FP32 arithmetic, accumulation, normalization and outputs",
     "Mixed precision limited to 256 x 256 in this deployment",
     "Anima Preview 3 two-step runs: existing FP32 42027 ms, FP16 68614 ms, BF16 70558 ms; no speedup demonstrated",
     "Physical keyboard and controller hardware not exercised"
-  ]
+  ],
+  "keyboard_ui_commit": "c5abdcaaa682a74fa91fa238c9278d80b05fc474",
+  "keyboard_ui_workflow": 36967152350,
+  "keyboard_ui_artifact": 11210660919,
+  "keyboard_activation": {
+    "model_selection": "passed",
+    "precision_selection": [
+      "fp32",
+      "fp16",
+      "bf16"
+    ],
+    "generate_activation": "passed",
+    "input": "real GPUI key path via navigation bridge"
+  },
+  "keyboard_generation": {
+    "precision": "bf16",
+    "accumulation_precision": "fp32",
+    "compute_backend": "D3D11 hardware",
+    "width": 256,
+    "height": 256,
+    "steps": 4,
+    "elapsed_ms": 123639,
+    "mixed_precision_dispatches": 2367,
+    "packed_operand_values": 10571656992,
+    "png_sha256": "8297b822b882147b150c30202d56a8f5f185ae1592807afd28434dbdefdda7f0"
+  }
 }
