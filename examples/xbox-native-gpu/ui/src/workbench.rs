@@ -92,9 +92,9 @@ impl Lab {
                 .into_any_element();
         };
         let status = if sample.mismatches == 0 {
-            Tag::success().child("Verified")
+            Tag::success().outline().child("Verified")
         } else {
-            Tag::danger().child("Mismatch")
+            Tag::danger().outline().child("Mismatch")
         };
         div()
             .flex()
@@ -208,7 +208,7 @@ impl Render for Lab {
                 .child(div().text_2xl().font_semibold().child("Xbox GPU workbench"))
                 .child(div().text_sm().text_color(theme.muted_foreground)
                     .child("Matrix multiplication · native D3D11 compute · GPUI / DirectX 12 interface")))
-            .child(div().flex().items_center().justify_between().gap_4()
+            .child(div().flex().items_end().justify_between().gap_4()
                 .child(div().flex().flex_col().gap_2().child("Workload").child(controls))
                 .child(Button::new("run-workload").primary().large().disabled(self.busy)
                     .label(if self.busy { "Computing…" } else { "Run workload" })
