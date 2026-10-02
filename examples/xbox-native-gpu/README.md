@@ -6,9 +6,10 @@ The existing native Direct3D 11 matrix workload from
 [`richrobber2/xbox-native-gpu`](https://github.com/richrobber2/xbox-native-gpu)
 remains responsible for compute and numerical verification.
 
-This is an experimental platform backend. A successful package build does not
-establish that it runs on an Xbox; console launch, controller input, suspension
-and GPU rendering still require device verification.
+This experimental platform backend was launched on Xbox Series X on 2026-10-02.
+The actual GPUI interface rendered through DirectX 12, and the native D3D11
+256×256 workload verified all 65,536 outputs. Physical controller input and
+suspension/resume still need separate verification.
 
 ## Build
 
@@ -59,4 +60,8 @@ The local Rust check uses the Android target to validate the platform trait and
 application code without requiring a Windows SDK. It does not execute the
 CoreWindow/DirectX 12 path. The Windows workflow builds the real UWP target,
 runs the independent matrix reference tests and checks the package signature.
-Device verification is separate; see [INSTALL.md](INSTALL.md).
+The device report is [validation/xbox-series-x-2026-10-02.json](validation/xbox-series-x-2026-10-02.json).
+See [INSTALL.md](INSTALL.md) for the verified loose-folder deployment command.
+The Xbox also compiled and ran a standalone Rust controller-selection smoke
+check, and compiled this example’s actual HLSL shader locally. These checks do
+not establish a full GPUI Cargo/UWP package build on the console.

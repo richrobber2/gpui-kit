@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-02",
+  "platform": "Xbox Series X",
+  "osVersion": "10.0.26100.9438",
+  "sourceCommit": "da2fa85a12de1da4c471148477780f78102dfbd2",
+  "artifactRun": 36946392128,
+  "appxSha256": "1a9ffb41c51030fc836c155eb638f0942d8946c2ae780bf8e365acaefe6ba8ec",
+  "deployment": "Device Portal loose-folder upload/register/launch; scripts/deploy.py exercised on device",
+  "gpuiDx12Rendered": true,
+  "repeatLaunchPassed": true,
+  "nativeGpuResult": {
+    "version": 1,
+    "backend": "native D3D11 hardware cs_5_0",
+    "workload": "C=A*B row-major float32",
+    "n": 256,
+    "verified": true,
+    "mismatches": 0,
+    "cpuMs": 18.682349,
+    "gpuTotalMs": 18.22053,
+    "appMemoryLimitBytes": 5368709120,
+    "timingScope": "one sample; CPU scalar reference; GPU allocation, upload, dispatch, sync and readback; shader creation excluded"
+  },
+  "nativeRustSmokeCheck": {
+    "compiler": "rustc 1.100.0-nightly (1303417c4 2026-09-21)",
+    "compileLinkExitCode": 0,
+    "programExitCode": 0,
+    "scope": "Standalone controller wraparound smoke check; full GPUI Rust/UWP package was built on Windows"
+  },
+  "nativeHlslCompile": {
+    "native_xbox": true,
+    "source_sha256": "b785dfdc0c0d683c799b62fa73305b17c1b11150eb756ef10418750f64772972",
+    "target": "cs_5_0",
+    "hresult": "0x0",
+    "seconds": 0.012392722999720718,
+    "bytes": 1512,
+    "dxbc": true,
+    "sha256": "f6369b80fdfe6e64d3dbc99629b42cc1a17ca51e9a6f788733ad0a6eb11823b4",
+    "passed": true
+  },
+  "notVerified": [
+    "physical controller input",
+    "suspension/resume",
+    "full GPUI Cargo/UWP packaging on console",
+    "performance throughput speedup"
+  ]
+}

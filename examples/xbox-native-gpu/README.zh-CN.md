@@ -2,7 +2,7 @@
 
 本示例将 GPUI Kit 嵌入 Xbox UWP 原生应用。界面由 GPUI 的 WGPU renderer 通过 DirectX 12 和 CoreWindow 绘制；矩阵运算和数值校验沿用 [richrobber2/xbox-native-gpu](https://github.com/richrobber2/xbox-native-gpu) 的 Direct3D 11 实现。
 
-这是实验性平台后端。构建成功不代表已在 Xbox 上运行；启动、手柄输入、挂起和 GPU 绘制仍需设备验证。
+这是实验性平台后端，已于 2026-10-02 在 Xbox Series X 上启动。实际 GPUI 界面通过 DirectX 12 绘制，D3D11 的 256×256 计算验证了全部 65,536 个输出。实体手柄输入及挂起/恢复仍需单独验证。
 
 ## 构建
 
@@ -31,4 +31,4 @@ Rust 使用 `x86_64-uwp-windows-msvc` target，以 nightly `build-std` 构建标
 
 ## 验证
 
-本地 Android target 的 Rust check 验证 platform trait 和应用代码，不执行 CoreWindow/DirectX 12 路径。Windows workflow 构建真正的 UWP target、运行独立矩阵参考测试并验证安装包签名。设备验证步骤见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。
+本地 Android target 的 Rust check 验证 platform trait 和应用代码，不执行 CoreWindow/DirectX 12 路径。Windows workflow 构建真正的 UWP target、运行独立矩阵参考测试并验证安装包签名。设备报告见 [validation/xbox-series-x-2026-10-02.json](validation/xbox-series-x-2026-10-02.json)，已验证的 loose-folder 部署命令见 [INSTALL.zh-CN.md](INSTALL.zh-CN.md)。Xbox 还在本机编译并运行了独立的 Rust 手柄选择 smoke check，并编译了本示例的实际 HLSL shader。这些检查不代表已在主机上完成完整 GPUI Cargo/UWP 安装包构建。

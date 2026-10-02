@@ -17,7 +17,33 @@ This is a development app for an Xbox Series X|S in Developer Mode. A Windows PC
 4. Sign in and use **Add / Deploy app**. Select the main APPX, then supply the x64 dependency APPXs if requested. Portal labels vary by OS version. Do not choose an APPXUPLOAD store-submission file.
 5. In Dev Home, select the installed app, open **View details**, and set **App type → Game**. Launch it.
 
+## Verified command deployment
+
+On 2026-10-02 the APPX update path on the test console returned success but left
+an application that could not launch. The loose-folder workflow launched the
+same executable successfully. Use this command from the repository with the
+original downloaded artifact ZIP (not the inner APPX):
+
+```bash
+python3 examples/xbox-native-gpu/scripts/deploy.py gpui-kit-xbox-x64.zip \
+  --portal https://YOUR-XBOX:11443 --insecure
+```
+
+`--insecure` accepts the local console’s self-signed TLS certificate. Supply
+`--username YOUR-USER` if the portal requires authentication; the command prompts
+for the password without putting it in command arguments. `--dry-run` validates
+the artifact without contacting Xbox.
+
+The command checks that the portal identifies itself as Xbox, validates the
+package identity, uploads a folder named from the APPX hash, registers it, and
+launches the lab. It stops only an existing Xbox GPU Lab process. It preserves
+other apps and their files. Keep the uploaded development folder: the registered
+app runs from those files. An unsuccessful launch must still be diagnosed from
+the screen and LocalState report; a successful HTTP response alone is insufficient.
+
 ## Run
+
+The demo runs a verified 256×256 calculation automatically when it opens.
 
 - **D-pad / keyboard arrows:** select 64, 128 or 256. Selection starts at 256.
 - **A / keyboard Enter:** run the selected matrix multiplication.
@@ -29,7 +55,7 @@ This is a development app for an Xbox Series X|S in Developer Mode. A Windows PC
 
 The app writes `native-gpu-result.json` into its own LocalState folder. Use the app's files view in Device Portal if your console exposes it; otherwise send a photo of the result screen. Errors are also written to `error.txt` when local storage remains available.
 
-The GPUI interface uses DirectX 12; compute remains Direct3D 11 hardware. Console runtime support is experimental until a package has been launched and tested on the device. When reporting a launch failure, include `LocalState/error.txt` and Device Portal diagnostics if available.
+The GPUI interface uses DirectX 12; compute remains Direct3D 11 hardware. GPUI rendering and the initial compute job have been verified on Xbox Series X; physical controller input and suspension/resume remain experimental. When reporting a launch failure, include `LocalState/error.txt` and Device Portal diagnostics if available.
 
 ## Troubleshooting
 
@@ -41,4 +67,4 @@ The GPUI interface uses DirectX 12; compute remains Direct3D 11 hardware. Consol
 
 ## Status of this kit
 
-The portable CPU tests passed. The Windows cloud workflow compiles the C++ and HLSL, builds the package, and verifies its signature before uploading the installation artifact. Phone installation and Xbox hardware execution still require validation. The source-kit ZIP is not an installable package; use the APPX inside the successful build artifact.
+The portable CPU tests passed. The Windows cloud workflow compiles the C++ and HLSL, builds the package, and verifies its signature before uploading the installation artifact. The command above was exercised from the phone: GPUI rendered, both initial and repeat launches verified all 65,536 GPU outputs, and the OS reported a 5 GiB memory budget. The measured single-sample GPU total was about 18 ms, including allocation/transfers/synchronization; this is not evidence of a throughput speedup. The source-kit ZIP is not an installable package; use the APPX inside the successful build artifact.
