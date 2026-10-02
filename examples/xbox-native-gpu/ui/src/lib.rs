@@ -481,8 +481,10 @@ pub unsafe extern "C" fn gpui_xbox_mono_font(font: *const u8, length: usize) -> 
 fn text_input(host: &Host, text: &str) -> Result<()> {
     // A platform KeyDown alone does not commit characters in GPUI. Use the
     // window's dispatch path, which inserts through the focused input handler.
+    // Update the window without borrowing its Root entity: key propagation
+    // may update Root even when no text field is focused.
     host.app.update(|cx| {
-        host.window.update(cx, |_, window, cx| {
+        cx.update_window(host.window.into(), |_, window, cx| {
             window.dispatch_keystroke(
                 Keystroke {
                     key: String::new(),
