@@ -33,6 +33,12 @@ try {
     # Signing via certificate store avoids passing a password or secret on a command line.
     & $msbuild XboxGpu.vcxproj /m /t:Rebuild /p:Configuration=Release /p:Platform=x64 "/p:WindowsTargetPlatformVersion=$($sdk.Name)" /p:UapAppxPackageBuildMode=SideloadOnly /p:AppxBundle=Never /p:AppxPackageSigningEnabled=true "/p:PackageCertificateThumbprint=$($cert.Thumbprint)" "/p:AppxPackageDir=$root\artifacts\" /verbosity:minimal
     if ($LASTEXITCODE -ne 0) { throw 'Native app build/package failed. Read the MSBuild log above.' }
+    # A backend can introduce imports even when it is not selected at runtime.
+    $imports = & dumpbin /nologo /imports "$root\build\bin\XboxGpu.exe"
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect the native executable imports.' }
+    if ($imports | Select-String -Pattern '(?i)\bopengl32\.dll\b') {
+        throw 'Desktop OpenGL imports are unavailable on Xbox. Build WGPU with DX12 only for UWP.'
+    }
     Write-Host 'Native package built; exporting development certificate.'
     Export-Certificate -Cert $cert -FilePath "$root\artifacts\XboxGpuLab.cer" | Out-Null
     Copy-Item "$root\INSTALL.md" "$root\artifacts\INSTALL.md"

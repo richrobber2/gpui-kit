@@ -6,6 +6,7 @@ on:
     paths:
       - examples/xbox-native-gpu/**
       - crates/kit/**
+      - crates/component/src/native_menu/**
       - .github/workflows/xbox-build.yml
   pull_request:
     paths:
@@ -32,6 +33,7 @@ jobs:
         with:
           path: |
             ~/.cargo/registry
+            ~/.rustup/toolchains/nightly-2026-09-30-x86_64-pc-windows-msvc/lib/rustlib/src/rust/library
             examples/xbox-native-gpu/ui/target
           key: xbox-rust-nightly-2026-09-30-${{ hashFiles('examples/xbox-native-gpu/ui/Cargo.lock') }}-${{ github.sha }}
           restore-keys: |
@@ -44,6 +46,7 @@ jobs:
         with:
           path: |
             ~/.cargo/registry
+            ~/.rustup/toolchains/nightly-2026-09-30-x86_64-pc-windows-msvc/lib/rustlib/src/rust/library
             examples/xbox-native-gpu/ui/target
           key: ${{ steps.rust-cache.outputs.cache-primary-key }}
       - uses: actions/upload-artifact@v4

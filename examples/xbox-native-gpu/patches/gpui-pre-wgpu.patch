@@ -11,3 +11,20 @@
              backend_options: wgpu::BackendOptions::default(),
              memory_budget_thresholds: wgpu::MemoryBudgetThresholds::default(),
              display,
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -142,8 +142,13 @@
+ [dependencies.unicode-segmentation]
+ version = "1.10"
+ 
+-[dependencies.wgpu]
++[target.'cfg(not(target_vendor = "uwp"))'.dependencies.wgpu]
+ version = "29.0.4"
++
++[target.'cfg(target_vendor = "uwp")'.dependencies.wgpu]
++version = "29.0.4"
++default-features = false
++features = ["std", "parking_lot", "dx12", "wgsl"]
+ 
+ [target.'cfg(target_family = "wasm")'.dependencies.web-sys]
+ version = "0.3"
