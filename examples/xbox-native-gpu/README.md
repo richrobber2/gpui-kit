@@ -171,3 +171,5 @@ All three existing checkpoints completed 256×256, two-step GPU generation;
 intermediate preview, cancellation, editor save/undo/clipboard and native Rust
 diagnostics were checked through this app’s input bridge. Physical controller
 and keyboard interaction still need separate verification.
+
+The Models page shows the engine’s fixed FP32 compute precision. FP16 and BF16 controls are disabled because the staged engine has no selectable compute-precision request field; checkpoint storage types do not imply those compute modes.

@@ -481,6 +481,14 @@ impl Render for Studio {
                 .child(div().w(rems(23.0)).flex_shrink_0().flex().flex_col().gap_4()
                     .child("Downloaded checkpoints").child(models)
                     .child(div().text_sm().text_color(theme.muted_foreground).child(if self.available[self.selected]{"Checkpoint and shared runtime available"}else{"Selected checkpoint or runtime unavailable"}))
+                    .child("Compute precision")
+                    .child(ButtonGroup::new("compute-precision").large().children([
+                        Button::new("precision-fp32").label("FP32").selected(true).disabled(true),
+                        Button::new("precision-fp16").label("FP16").disabled(true),
+                        Button::new("precision-bf16").label("BF16").disabled(true),
+                    ]))
+                    .child(div().text_sm().text_color(theme.muted_foreground)
+                        .child("FP32 active · FP16 and BF16 compute are unavailable in this engine."))
                     .child("Prompt").child(Input::new(&self.prompt).large().disabled(busy))
                     .child(div().text_sm().text_color(theme.muted_foreground).child(format!("{} × {} · {} steps · seed {} · CFG {}",self.width,self.height,self.steps,self.seed,self.cfg)))
                     .child(Button::new("sampling-steps").label(format!("Sampling steps: {}",self.steps)).disabled(busy).on_click(cx.listener(|this,_,_,cx|{this.steps=if this.steps==4{12}else{4};cx.notify();})))
